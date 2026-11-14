@@ -1,0 +1,127 @@
+import { useRef, useState, type ChangeEvent } from 'react'
+import { Download, RotateCcw, Upload } from 'lucide-react'
+import { GAME_SCHEMA_VERSION } from '../../domain/model/game'
+import { SAVE_KEY } from '../../persistence/saveGame'
+import { useGame } from '../../store/gameStore'
+import { ConfirmDialog } from '../components/ConfirmDialog'
+import { PageHeader } from '../components/PageHeader'
+import { Panel } from '../components/Panel'
+import { formatTimestamp, pad } from '../format'
+
+export function SystemView() {
+  const game = useGame((s) => s.game)
+  const persistence = useGame((s) => s.persistence)
+  const { exportSave, importSave, resetGame, setReducedMotion } = useGame((s) => s)
+  const fileInput = useRef<HTMLInputElement>(null)
+  const [importMessage, setImportMessage] = useState<string | null>(null)
+
+  const download = () => {
+    const blob = new Blob([exportSave()], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `elysium-turno-${pad(game.turn)}.json`
+    link.click()
+    URL.revokeObjectURL(url)
+  }
+
+  const onFile = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    event.target.value = ''
+    if (!file) return
+    const result = importSave(await file.text())
+    setImportMessage(result.ok ? 'Partida importada correctamente.' : result.reason)
+  }
+
+  return (
+    <div className="page">
+      <PageHeader eyebrow="S-06 · Núcleo Collins" title="Memoria de N0VA-7">
+        Copias de seguridad, configuración y reinicio de la simulación.
+      </PageHeader>
+      <div className="system-grid">
+        <Panel title="Estado de la memoria" code={`v${GAME_SCHEMA_VERSION}`}>
+          <dl className="readouts">
+            <div>
+              <dt>Almacenamiento</dt>
+              <dd className={persistence === 'saved' ? 'text-good' : 'text-critical'}>
+                {persistence === 'saved' ? 'Local · sincronizado' : 'No disponible'}
+              </dd>
+            </div>
+            <div>
+              <dt>Partida iniciada</dt>
+              <dd>{formatTimestamp(game.createdAt)}</dd>
+            </div>
+            <div>
+              <dt>Último cambio</dt>
+              <dd>{formatTimestamp(game.updatedAt)}</dd>
+            </div>
+            <div>
+              <dt>Turno</dt>
+              <dd>{pad(game.turn)}</dd>
+            </div>
+          </dl>
+          <p className="small muted">
+            La partida se guarda automáticamente en este navegador (clave <code>{SAVE_KEY}</code>)
+            después de cada operación importante y se restaura al volver a abrir la aplicación.
+          </p>
+        </Panel>
+
+        <Panel title="Copias de seguridad" code="JSON">
+          <p className="small muted">
+            Exporta la partida a un archivo o restaura una copia anterior.
+          </p>
+          <div className="button-row">
+            <button type="button" className="btn" onClick={download}>
+              <Download size={14} aria-hidden="true" /> Exportar partida
+            </button>
+            <button type="button" className="btn" onClick={() => fileInput.current?.click()}>
+              <Upload size={14} aria-hidden="true" /> Importar partida
+            </button>
+            <input
+              ref={fileInput}
+              type="file"
+              accept="application/json,.json"
+              className="sr-only"
+              aria-label="Archivo de partida"
+              onChange={(e) => void onFile(e)}
+            />
+          </div>
+          {importMessage && (
+            <p className="small" role="status">
+              {importMessage}
+            </p>
+          )}
+        </Panel>
+
+        <Panel title="Configuración">
+          <label className="toggle">
+            <input
+              type="checkbox"
+              checked={game.settings.reducedMotion}
+              onChange={(e) => setReducedMotion(e.target.checked)}
+            />
+            <span>Reducir animaciones (muestra los informes completos de inmediato)</span>
+          </label>
+        </Panel>
+
+        <Panel title="Reinicio" code="!" className="danger-zone">
+          <p className="small muted">
+            Borra el progreso actual y restaura la tripulación a su estado inicial.
+          </p>
+          <ConfirmDialog
+            trigger={
+              <button type="button" className="btn btn-danger">
+                <RotateCcw size={14} aria-hidden="true" /> Reiniciar partida
+              </button>
+            }
+            title="¿Reiniciar la partida?"
+            description="Se perderán las estadísticas, misiones completadas e historial actuales. Exporta una copia antes si quieres conservarla."
+            confirmLabel="Reiniciar"
+            danger
+            onConfirm={resetGame}
+          />
+        </Panel>
+      </div>
+    </div>
+  )
+}

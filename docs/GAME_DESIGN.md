@@ -1,45 +1,38 @@
-# PULSE — Mission Control
+# Diseño de juego — estado de implementación
 
-> Not a quiz. Not a slideshow. A living simulation where every choice costs something.
+Fuente: documento de diseño de ELYSIUM (prompt maestro). Este archivo registra qué está
+implementado, qué interpretaciones se hicieron y qué falta definir. No se inventaron reglas.
 
-## First playable: A quiet warning
+## Implementado
 
-ARES–01 is preparing a Mars transfer. Elena Vasquez commands, Idris Okafor maintains flight systems, Mina Park oversees crew health. Okafor starts fatigued after overnight repairs. The player is flight director, not an astronaut answering questions.
+- 5 tripulantes con estadísticas iniciales (§6.2) y especialidades (§6.3) exactas.
+- Rangos y etiquetas de las 5 estadísticas (§6.1); estrés con escala invertida.
+- Límite 0–100 en todas las operaciones.
+- Catálogo completo de estados permanentes, únicos y legendarios (§6.4–6.6). Hipervigilancia se conserva como dos entradas (Sueño y Estrés).
+- Límites numéricos de estados aplicados al hacer clamp: Lesión Crónica (Salud máx. 80), Desmotivación Crónica (Moral máx. 80), Rencor (Confianza máx. 70), Ruptura de Autoridad (Confianza máx. 50), Lealtad Inquebrantable (Confianza mín. 40).
+- Misión 1, El Satélite Fantasma, completa: base del equipo óptimo, sin Lyra (+15 Estrés / −10 Sueño a participantes), sin Zara (−25 Salud a un participante al azar, registrado), sin Orion (+10 Estrés / −5 Confianza a participantes).
+- Misiones 2–5 como datos (equipo óptimo, consecuencias, penalizaciones, rutas de la misión 5). No se pueden lanzar.
+- 8 sectores con función y equipamiento; el Centro Médico y el Módulo Habitacional muestran las estadísticas que les corresponden.
+- Reglas de recuperación (§7) como catálogo de datos en `domain/rules/recovery.ts`, con lo que falta para cada una.
 
-Win by reaching 100% transfer readiness over at most 30 shifts. Work is the only source of readiness. Lose if the window expires, operational reserves drop below daily upkeep, or all crew become critical. A final shift completing readiness takes priority over abort checks; this prototype is intentionally forgiving about terminal resource/crew margins.
+## Interpretaciones (revisables)
 
-Day 1 is the initial planning state. Executing day 1 produces the day 2 report; executing the final day 30 produces day 31's terminal report. No turns pass while you inspect or wait for animations.
+| Tema                                  | Decisión                                                                                                    | Motivo                                                                                                  |
+| ------------------------------------- | ----------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| Participantes fuera del equipo óptimo | Sin consecuencia base; reciben solo las penalizaciones dirigidas a "participantes".                         | El diseño solo define la base de los miembros óptimos.                                                  |
+| Penalización sin Zara                 | El participante al azar se elige entre los enviados.                                                        | "Un personaje al azar" en el contexto de la misión.                                                     |
+| Información sin equipo óptimo         | Se registra como "no determinada".                                                                          | El diseño solo define "Se obtiene toda la información" con el equipo óptimo.                            |
+| Disponibilidad                        | Bloquean: Salud 0, Moral 0 ("Se niega a cooperar"), Sueño 0 ("Colapso inmediato"). Confianza 0 solo alerta. | Estados terminales de §6.1; "Desobediencia" describe un comportamiento futuro, no una indisponibilidad. |
+| Turno                                 | Avanza 1 por misión resuelta.                                                                               | No hay sistema de tiempo definido.                                                                      |
+| Misión completada                     | No se repite.                                                                                               | "Misiones completadas / disponibles" en los requisitos.                                                 |
+| Orden de aplicación                   | Se suman todas las consecuencias y se limita una sola vez.                                                  | Evita aplicar dos veces o depender del orden.                                                           |
 
-## Player loop
+## Pendiente de definición en el diseño
 
-1. Inspect crew, fatigue/stress and previous reports.
-2. Select crew from a sprite or card. The selected portrait and metrics update immediately.
-3. Queue one activity per astronaut using buttons or station areas. A later assignment replaces the earlier queue entry.
-4. Review next-shift costs and remaining transfer time.
-5. Execute next day; observe immediate changes, movement to assigned stations, delayed effects and saved telemetry.
-6. Routines persist! Explicitly return rested crew to duty. The Clear orders control cancels overrides, not committed routines.
-
-## Trade-offs
-
-| Activity  | Extra operations | Medical | Benefit and cost                                                                     |
-| --------- | ---------------: | ------: | ------------------------------------------------------------------------------------ |
-| Duty      |                0 |       0 | Readiness, but fatigue +11±2, sleep −8, stress +5; overload can cause delayed strain |
-| Rest      |                1 |       0 | Fatigue −24, sleep +25, stress −12; no readiness                                     |
-| Exercise  |                2 |       0 | Sleep +7, stress −6; fatigue +6 now, stress −8 two subsequent turns later            |
-| Assess    |                2 |       0 | A delayed cognitive report; fatigue +3, stress +2; no healing                        |
-| Treat     |                1 |       2 | Fatigue −16, stress −16, sleep +10; limited medical stock                            |
-| Socialize |                1 |       0 | Fatigue −6, stress −18, sleep +3; no readiness                                       |
-
-Base habitat upkeep is 3 operations/shift regardless of assignments. Medical supplies and operational reserves do not regenerate. Costs and health rules are fictional game balance.
-
-## Consequences
-
-A work shift ending at fatigue ≥78 queues strain for the next report: +14 stress and +7 fatigue. Resting afterward does not erase already incurred strain. Exercise adaptation occurs two turns after the exercise report. Assessment results arrive one turn after the assessment report. Repeating either routine schedules repeated effects and repeatedly consumes resources.
-
-At ≥65 fatigue or stress a crew member is strained; ≥90 makes them critical. Critical is recoverable until mission abort. Slow movement and colored overhead markers communicate these states. All scores are abstract 0–100 variables.
-
-## Strategy and scope
-
-A simple rotation—rest when fatigue reaches 60, otherwise work—can complete the slice; an automated test verifies that the mission is actually winnable within reserves. This is not a tuned final strategy game. Assessment information is already visible in the interface, so assessments have limited strategic value until uncertainty/hidden telemetry is introduced.
-
-There is one scenario, three crew, five areas and six assignments. Future work: stronger station-use animations, visible queued routes, scenario variety, station capacity constraints, richer event choices, uncertainty and sensor quality, limited attention/medical officer availability, difficulty settings, and sensitivity-tested balancing. Do not turn events into isolated multiple-choice quizzes; they must alter the same shared state.
+- Recursos de la nave (tipos, valores iniciales, consumo): lo necesitan misiones 2–5, §7 y las alertas de recursos.
+- Disparadores de estados permanentes ("durante varias misiones", "sobreexplotar", etc.).
+- Magnitudes no cuantificadas: Resentimiento (Confianza máxima reducida), Hipervigilancia (Sueño < 100), rangos de §7 (+5 a +15, etc.).
+- Fórmula de recuperación de Sueño según Estrés (solo hay dos ejemplos: 20 → +25, 90 → +10).
+- Alcance de "todos" en misiones 2 y 4 (participantes o tripulación completa) y la sustitución "Moral +5 solamente" de la misión 4.
+- Acciones fuera de misión (descanso, recreación): requieren un sistema de turnos.
+- Muerte frente a incapacidad con Salud 0; estados legendarios y finales.

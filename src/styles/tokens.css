@@ -1,43 +1,41 @@
-/* PULSE interface palette. Game art has a separate integer-pixel palette. */
-@theme {
-  --color-background: #050b16;
-  --color-foreground: #ffffff;
-  --color-primary: #2563eb;
-  --color-primary-hover: #1d4ed8;
-  --color-primary-soft: #172d50;
-  --color-institutional: #0b3d91;
-  --color-navy: #101d32;
-  --color-surface: #142238;
-  --color-surface-raised: #1b2e48;
-  --color-muted: #a8b4c7;
-  --color-subtle: #899bb5;
-  --color-border: #31425c;
-  --color-track: #2c3c53;
-  --color-link: #a8c8ff;
-  --color-healthy: #42b883;
-  --color-warning: #f4b544;
-  --color-critical: #e34b4b;
-  --color-critical-text: #ff9999;
-  --color-warning-surface: #29251d;
-  --color-critical-surface: #301e27;
-  --color-chart-cognition: #a8c8ff;
-  --color-chart-fatigue: #f4b544;
-  --font-display: 'Inter Variable', Arial, sans-serif;
-  --font-sans: 'Public Sans Variable', 'Segoe UI', sans-serif;
-  --font-mono: 'DM Mono', ui-monospace, monospace;
-  --spacing: 4px;
-  --radius-panel: 0px;
-  --radius-control: 2px;
-}
+/* ELYSIUM — N0VA-7 console tokens. Dark, near-monochrome; colour only carries state. */
 :root {
+  color-scheme: dark;
+
+  --bg: #02050b;
+  --bg-raised: #050b15;
+  --panel: #07101d;
+  --panel-2: #0b1726;
+  --line: #172840;
+  --line-strong: #27405f;
+  --text: #d5e0ee;
+  --muted: #8193ad;
+  --dim: #4d6080;
+
+  --accent: #6ee7f0;
+  --accent-soft: rgb(110 231 240 / 0.1);
+  --accent-glow: 0 0 12px rgb(110 231 240 / 0.35);
+
+  --good: #5fe08f;
+  --ok: #9cc2ff;
+  --warn: #f2b84b;
+  --critical: #ff6b6b;
+  --fail: #ff3d5a;
+  --warn-soft: rgb(242 184 75 / 0.1);
+  --critical-soft: rgb(255 107 107 / 0.1);
+  --good-soft: rgb(95 224 143 / 0.1);
+
+  --font-mono: 'DM Mono', ui-monospace, 'SFMono-Regular', Menlo, monospace;
+  --font-sans: 'Public Sans Variable', 'Segoe UI', system-ui, sans-serif;
+
   --space-1: 4px;
   --space-2: 8px;
   --space-3: 12px;
   --space-4: 16px;
-  --space-5: 20px;
-  --space-6: 24px;
-  --space-8: 32px;
-  --space-12: 48px;
-  --page-gutter: clamp(16px, 2.2vw, 48px);
-  --focus-ring: 2px solid var(--color-link);
+  --space-5: 24px;
+  --space-6: 32px;
+  --gutter: clamp(16px, 2.5vw, 32px);
+  --radius: 2px;
+  --sidenav: 196px;
+  --focus: 2px solid var(--accent);
 }
