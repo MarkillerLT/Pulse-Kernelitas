@@ -1,19 +1,29 @@
+import type { CSSProperties } from 'react'
 import { ChevronRight } from 'lucide-react'
 import { useMissionStore } from '../../store/missionStore'
 import type { Astronaut } from '../../simulation/models/mission'
+import { activityLabels, healthLabels, roleLabels } from '../../lib/localization'
+import { astronautFrames, getCrewSprite } from '../../game/sprites/spriteDefinitions'
 
-export function Portrait({ index, color }: { index: number; color: string }) {
+export function Portrait({ astronautId }: { astronautId: string }) {
+  const definition = getCrewSprite(astronautId)
+  if (!definition) return null
   return (
     <div
       className="portrait"
-      style={{ backgroundColor: `${color}12`, borderColor: `${color}40` }}
       aria-hidden="true"
+      data-astronaut-id={astronautId}
+      style={
+        {
+          '--sprite-frame-width': `${astronautFrames.width}px`,
+          '--sprite-frame-height': `${astronautFrames.height}px`,
+          '--sprite-frame-count': astronautFrames.count,
+          '--sprite-frame': astronautFrames.idle,
+          '--sprite-url': `url(${definition.url})`,
+        } as CSSProperties
+      }
     >
-      <div
-        style={{
-          backgroundImage: `url(/assets/pixel-art/astronauts/spritesheets/crew-${index}.png)`,
-        }}
-      />
+      <div />
     </div>
   )
 }
@@ -21,7 +31,7 @@ export function Status({ health }: { health: Astronaut['health'] }) {
   return (
     <span className={`crew-status ${health}`}>
       <i />
-      {health}
+      {healthLabels[health]}
     </span>
   )
 }
@@ -33,11 +43,11 @@ export function CrewList() {
   return (
     <section className="crew-panel panel">
       <div className="panel-heading">
-        <h2>Crew manifest</h2>
+        <h2>Tripulación</h2>
         <span>03</span>
       </div>
       <div className="crew-cards">
-        {crew.map((a, i) => (
+        {crew.map((a) => (
           <button
             key={a.id}
             className={`crew-card ${selectedId === a.id ? 'selected' : ''}`}
@@ -45,24 +55,26 @@ export function CrewList() {
             aria-pressed={selectedId === a.id}
           >
             <div className="crew-identity">
-              <Portrait index={i} color={a.color} />
+              <Portrait astronautId={a.id} />
               <div>
                 <strong>{a.name}</strong>
-                <small>{a.role}</small>
+                <small>{roleLabels[a.role] ?? a.role}</small>
               </div>
               <ChevronRight size={14} />
             </div>
             <div className="crew-meta">
               <Status health={a.health} />
               <span>
-                {orders.find((d) => d.astronautId === a.id) ? 'Order queued' : a.activity}
+                {orders.find((d) => d.astronautId === a.id)
+                  ? 'Orden en cola'
+                  : activityLabels[a.activity]}
               </span>
             </div>
             <div className="mini-track">
-              <i style={{ width: `${a.cognition}%`, background: a.color }} />
+              <i style={{ width: `${a.cognition}%` }} />
             </div>
             <div className="crew-meta">
-              <small>Cognitive readiness</small>
+              <small>Preparación cognitiva</small>
               <b>
                 {a.cognition}
                 <em>/100</em>
@@ -72,11 +84,10 @@ export function CrewList() {
         ))}
       </div>
       <div className="crew-tip">
-        <span className="eyebrow">FLIGHT DIRECTOR’S NOTE</span>
+        <span className="eyebrow">NOTA DE DIRECCIÓN DE VUELO</span>
         <p>
-          There is no perfect shift.
-          <br />
-          Protect the crew. Keep the mission moving.
+          No existe el turno perfecto. <br />
+          Protege a la tripulación. Mantén la misión en marcha.
         </p>
       </div>
     </section>

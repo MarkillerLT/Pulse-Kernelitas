@@ -58,6 +58,7 @@ export const missionSchema = z
         severity: z.enum(['info', 'warning', 'critical']),
         title: z.string(),
         description: z.string(),
+        astronautIds: z.array(z.string()).optional(),
       }),
     ),
     pending: z.array(
@@ -79,6 +80,12 @@ export const missionSchema = z
       if (!ids.has(effect.astronautId))
         ctx.addIssue({ code: 'custom', message: 'Pending effect references unknown crew.' })
     }
+    for (const event of state.events) {
+      for (const astronautId of event.astronautIds ?? []) {
+        if (!ids.has(astronautId))
+          ctx.addIssue({ code: 'custom', message: 'Event references unknown crew.' })
+      }
+    }
     for (const entry of state.history)
       for (const decision of entry.decisions) {
         if (!ids.has(decision.astronautId))
@@ -86,6 +93,7 @@ export const missionSchema = z
       }
   })
 export type MissionState = z.infer<typeof missionSchema>
+export type MissionEvent = MissionState['events'][number]
 export type SimulationParameters = {
   workFatigue: number
   restRecovery: number

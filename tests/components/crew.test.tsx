@@ -32,7 +32,7 @@ it('selects an astronaut through accessible crew controls, without mounting Pixi
 })
 it('queues assignments without advancing time, and applies them on execution', async () => {
   render(<CrewInspector />)
-  await userEvent.click(screen.getByRole('button', { name: /Rest 1 OP/ }))
+  await userEvent.click(screen.getByRole('button', { name: /Descansar 1 OP/ }))
   expect(useMissionStore.getState().mission.day).toBe(1)
   expect(useMissionStore.getState().orders).toEqual([{ astronautId: 'okafor', activity: 'rest' }])
   await act(() => useMissionStore.getState().advance())
@@ -42,9 +42,9 @@ it('queues assignments without advancing time, and applies them on execution', a
 it('replaces rather than duplicates a queued activity and clears orders', async () => {
   render(<CrewInspector />)
   const user = userEvent.setup()
-  await user.click(screen.getByRole('button', { name: /Rest 1 OP/ }))
-  await user.click(screen.getByRole('button', { name: /Exercise 2 OP/ }))
+  await user.click(screen.getByRole('button', { name: /Descansar 1 OP/ }))
+  await user.click(screen.getByRole('button', { name: /Ejercitar 2 OP/ }))
   expect(useMissionStore.getState().orders).toHaveLength(1)
-  await user.click(screen.getByRole('button', { name: /Clear all/ }))
+  await user.click(screen.getByRole('button', { name: /Cancelar órdenes en cola/ }))
   expect(useMissionStore.getState().orders).toEqual([])
 })

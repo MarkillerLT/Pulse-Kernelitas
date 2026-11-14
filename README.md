@@ -6,6 +6,8 @@ A playable browser-based astronaut health strategy simulation for a NASA Space A
 
 Original 8-bit-inspired station art, three animated selectable astronauts, five functional areas, six persistent activities, a deterministic daily simulation, delayed consequences, a telemetry chart, mission journal, resource budgets, victory/abort conditions and local IndexedDB saves.
 
+The Spanish interface now uses an aerospace/editorial design system: a prominent integer-scaled station, white/blue mission identity, technical crew profiles, transparent turn costs and an editorial research library. See [Design system](docs/DESIGN_SYSTEM.md) for tokens, typography, art and the NASA brand review. PULSE is independent and is not an official NASA product or endorsed by NASA.
+
 **All health coefficients are illustrative game values. No NASA datasets have been integrated. This is not a medical device or an operational planning tool.**
 
 ## Run
@@ -93,22 +95,23 @@ docs/                     Architecture, gameplay, art and scientific assumptions
 
 Exact resolutions are committed in `pnpm-lock.yaml`; `package.json` lists all direct dependencies.
 
-**Runtime:** React/React DOM 19.3.1; React Router 8.5.1; PixiJS 8.23.0; @pixi/react 8.0.5; Zustand 5.1.0; Immer 11.2.10; Dexie 4.4.7; Zod 4.6.7; @radix-ui/react-dialog 1.3.1; @radix-ui/react-slot 1.5.0; Lucide React 1.73.0; Motion 14.14.0; Recharts 3.10.1; clsx 2.1.1; tailwind-merge 3.7.0; class-variance-authority 0.7.1; date-fns 4.4.0. Immer/date-fns are available for future work but not needed in the short clone-based turn engine.
+**Runtime:** React/React DOM 19.3.1; React Router 8.5.1; PixiJS 8.23.0; @pixi/react 8.0.5; Zustand 5.1.0; Immer 11.2.10; Dexie 4.4.7; Zod 4.6.7; @radix-ui/react-dialog 1.3.1; @radix-ui/react-slot 1.5.0; Lucide React 1.73.0; Motion 14.14.0; Recharts 3.10.1; clsx 2.1.1; tailwind-merge 3.7.0; class-variance-authority 0.7.1; date-fns 4.4.0; @fontsource-variable/inter 5.3.0; @fontsource-variable/public-sans 5.3.0; @fontsource/dm-mono 5.3.0. Font licenses and copyright notices are shipped in `public/licenses/`. Immer/date-fns are available for future work but not needed in the short clone-based turn engine.
 
 **Development:** TypeScript 5.9.3; Vite 8.3.8; @vitejs/plugin-react 6.3.0; Tailwind CSS/@tailwindcss/vite 4.3.5; Vitest 5.1.0; jsdom 31.0.1; React Testing Library 16.3.3; jest-dom 7.0.1; user-event 14.6.10; fake-indexeddb 6.2.8; Playwright 1.65.1; ESLint 10.15.0; @eslint/js 10.0.1; typescript-eslint 8.72.2; React Hooks plugin 7.1.1; React Refresh plugin 0.5.7; globals 17.14.0; Prettier 3.10.1; pngjs 7.0.0; types for Node 24.19.2, React 19.3.0, React DOM 19.3.0 and pngjs 6.0.5.
 
-shadcn/ui is initialized through `components.json` with a locally owned Button using its CVA/Radix Slot convention; it is not a runtime package. No network-loaded fonts or external art assets. TypeScript was downgraded from the template's 7.x to 5.9.x to satisfy the ESLint parser's supported peer range.
+shadcn/ui is initialized through `components.json` with a locally owned Button using its CVA/Radix Slot convention; it is not a runtime package. No third-party font service calls or external art assets. Licensed fonts are bundled locally; all spacecraft art and PULSE patches are original. TypeScript was downgraded from the template's 7.x to 5.9.x to satisfy the ESLint parser's supported peer range.
 
 ## Validation
 
-Validated in this workspace: **24 Vitest tests passed**, **2 Chromium browser tests passed**, strict TypeScript and ESLint passed without errors or warnings, and production build succeeded. Browser tests used the existing `/usr/bin/chromium` (the optional browser download was not required).
+Validated in this workspace: **49 Vitest tests passed**, **6 Chromium browser tests passed**, strict TypeScript and ESLint passed without errors or warnings, and production build succeeded. Browser tests used the existing `/usr/bin/chromium` (the optional browser download was not required).
 
-Run the commands above for current results. Coverage includes initialization, turn progression, rest, fatigue, costs, delayed strain/adaptation/reports, PRNG replay, frozen-state immutability, terminal outcomes, a winning policy, IndexedDB round trips, invalid saves, persistence failures, duplicate-execution prevention, React astronaut selection and queued assignments. Playwright verifies actual WebGL rendering, sprite click selection, room click assignments, turn execution, reload/load and mobile canvas cropping without page overflow.
+Run the commands above for current results. Coverage includes initialization, turn progression, rest, fatigue, costs, delayed strain/adaptation/reports, PRNG replay, frozen-state immutability, terminal outcomes, a winning policy, IndexedDB round trips, invalid saves, persistence failures, duplicate-execution prevention, React astronaut selection and queued assignments. Playwright verifies actual WebGL rendering, 2× desktop canvas, sprite selection, room assignments, all activity controls and resource costs, progression, reload/load, Spanish routes and attribution, keyboard skip navigation, reduced-motion operation and responsive widths from 320 to 1920 px. Contrast, asset dimensions and font license files also have regression tests. Mission journal warnings reuse the correct crew sprites through optional typed event references, including multiple crew; legacy/general events remain text-only. Tests verify these mappings, responsive portrait layout and save compatibility.
 
 Production builds currently emit a non-fatal large-chunk warning. Further splitting of charting/renderer dependencies is recommended before deployment. SPA hosting must rewrite `/mission` and `/research` to `index.html`.
 
 ## Documentation and next steps
 
+- [Design system, NASA brand review and visual audit](docs/DESIGN_SYSTEM.md)
 - [Architecture](docs/ARCHITECTURE.md)
 - [Game design and complete activity trade-offs](docs/GAME_DESIGN.md)
 - [Pixel art scale, palette, frame map and provenance](docs/PIXEL_ART_GUIDELINES.md)

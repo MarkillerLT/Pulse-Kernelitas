@@ -2,6 +2,7 @@ import { Component, useEffect, useRef, useState, type ReactNode } from 'react'
 import { Application } from '@pixi/react'
 import { SpaceStationScene } from './scenes/SpaceStationScene'
 import { loadSprites, type GameAssets } from './sprites/spriteLoader'
+import { gamePalette } from './rendering/palette'
 
 class RendererBoundary extends Component<{ children: ReactNode }, { failed: boolean }> {
   state = { failed: false }
@@ -11,8 +12,8 @@ class RendererBoundary extends Component<{ children: ReactNode }, { failed: bool
   render() {
     return this.state.failed ? (
       <p className="renderer-message">
-        Graphics unavailable. Enable WebGL to view the station. All mission controls remain
-        playable.
+        Gráficos no disponibles. Activa WebGL para ver la estación. Los controles de misión siguen
+        disponibles.
       </p>
     ) : (
       this.props.children
@@ -46,11 +47,15 @@ export function GameCanvas() {
     <div
       ref={host}
       className="world-viewport"
-      aria-label="Interactive side-view space station. Select crew or click a room to queue an assignment."
+      role="region"
+      tabIndex={0}
+      aria-label="Estación espacial interactiva en vista lateral. Selecciona un astronauta o pulsa una sala para poner una asignación en cola."
     >
       <div className="world-frame" style={{ width: 480 * scale, height: 270 * scale }}>
         {error ? (
-          <p className="renderer-message">Station assets could not load. Reload to retry.</p>
+          <p className="renderer-message">
+            No se pudieron cargar los gráficos de la estación. Recarga para reintentar.
+          </p>
         ) : assets ? (
           <RendererBoundary>
             <Application
@@ -60,14 +65,16 @@ export function GameCanvas() {
               autoDensity={false}
               antialias={false}
               roundPixels
-              background="#08111e"
+              background={gamePalette.space}
               preference="webgl"
             >
               <SpaceStationScene assets={assets} />
             </Application>
           </RendererBoundary>
         ) : (
-          <p className="renderer-message">Establishing station uplink…</p>
+          <p className="renderer-message">
+            Conectando con la estación…<small>Preparando el hábitat y la tripulación.</small>
+          </p>
         )}
       </div>
     </div>
