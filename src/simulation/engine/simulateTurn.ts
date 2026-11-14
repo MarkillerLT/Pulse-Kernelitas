@@ -47,6 +47,7 @@ export function simulateTurn(
     title: string,
     description: string,
     severity: 'info' | 'warning' | 'critical' = 'info',
+    astronautIds?: string[],
   ) => {
     state.events.push({
       id: `${state.day}-${state.events.length}`,
@@ -54,6 +55,7 @@ export function simulateTurn(
       title,
       description,
       severity,
+      ...(astronautIds ? { astronautIds } : {}),
     })
   }
   for (const effect of state.pending.filter((e) => e.dueDay <= state.day)) {
@@ -65,17 +67,22 @@ export function simulateTurn(
         'Delayed strain',
         `${a.name}: yesterday’s overload has surfaced. Stress +${effect.magnitude}, fatigue +${effect.magnitude / 2}.`,
         'warning',
+        [a.id],
       )
     } else if (effect.kind === 'recovery') {
       a.stress = clamp(a.stress - effect.magnitude)
       event(
         'Adaptation benefit',
         `${a.name}: exercise adaptation reduced stress by ${effect.magnitude}.`,
+        'info',
+        [a.id],
       )
     } else {
       event(
         'Assessment results',
         `${a.name}: cognitive readiness ${a.cognition}/100; fatigue ${a.fatigue}/100. Consider recovery before another work shift.`,
+        'info',
+        [a.id],
       )
     }
   }
@@ -152,6 +159,7 @@ export function simulateTurn(
         'Overload detected',
         `${a.name} finished an exhausting shift. A delayed stress response is expected next day.`,
         'warning',
+        [a.id],
       )
     }
     if (a.health === 'critical')
@@ -159,6 +167,7 @@ export function simulateTurn(
         'Crew health alert',
         `${a.name} is in critical condition. Prioritize recovery or treatment.`,
         'critical',
+        [a.id],
       )
   }
   state.progress = Math.min(100, Math.round((state.progress + progress) * 10) / 10)

@@ -2,7 +2,7 @@
 
 ## Original assets
 
-All station and astronaut PNGs are original programmatically authored placeholders created in this repository. No external art, game rips, downloaded illustrations, generated photorealistic imagery or third-party fonts are used. No external art attribution requirements apply to these generated images. UI icons are Lucide; library licenses remain applicable. The art is intentionally simple and should be refined, not replaced with smooth vectors.
+All station and astronaut PNGs are original programmatically authored placeholders created in this repository. No external art, game rips, downloaded illustrations or generated photorealistic imagery are used. The modern UI self-hosts licensed Inter, Public Sans and DM Mono fonts; the game itself uses rasterized monospace labels. No external art attribution requirements apply to these generated images. UI icons are Lucide; library licenses remain applicable. The art is intentionally simple and should be refined, not replaced with smooth vectors.
 
 Regenerate with `pnpm assets:generate`. Committed outputs are in `public/assets/pixel-art/`. The deterministic script uses pngjs and integer rectangles to hand-compose silhouettes, clothing, faces, equipment and shaded environmental details; astronauts are not geometric stand-ins or emoji.
 
@@ -18,7 +18,9 @@ Regenerate with `pnpm assets:generate`. Committed outputs are in `public/assets/
 
 ## Palette
 
-Space #08111e / app #0b1521; hull #283d50 / #567086; walls #172b3b / #203546; highlights #e7f0f6; crew identification cyan #4de1d4, amber #f0c477, lavender #ac9bf2; critical #f07178. Warm Mars bands and muted wood/plant colors add restrained contrast. Avoid gradients inside pixel assets; stepped color bands are deliberate.
+Canonical art colors live in `src/game/rendering/palette.json`, shared by PNG generation and Pixi effects. Space #050b16; metallic hull #687e98 / #b9c7d7; walls #26394f; white suits #f1f5f9 with blue #2759a6 utility panels, dark visors and red #bf4c52 shoulder details. White selection outlines, amber #f4b544 strain and red #e34b4b critical markers carry distinct meanings. Warm stepped Mars bands and restrained plant/wood colors provide illustrative contrast. No gradients inside pixel assets.
+
+The suits and hull display original angular PULSE/P micro-patches, not NASA logos. The application chrome uses a separately authored `ui/pulse-mission-patch.svg`. No official NASA insignia, seal, mission emblem or logotype has been included or modified. See `DESIGN_SYSTEM.md` for the brand review and attribution decision.
 
 ## Animation map
 
@@ -33,10 +35,10 @@ Space #08111e / app #0b1521; hull #283d50 / #567086; walls #172b3b / #203546; hi
 | 0,1    | Common-area idle        |
 | 11     | Reserved alternate pose |
 
-Work/medical/exercise are basic two-pose placeholders, not complete bespoke action sequences. Rest frames currently hold a horizontal pose; later polish can add blanket movement. Pixi `AnimatedSprite` frame changes and Ticker-driven travel are visual only. Arrival transitions stop walking and select activity frames. Fatigue slows travel. Selection outlines and amber/red markers are separate effect-layer graphics.
+Work/medical/exercise remain basic two-pose action cycles, now with consistent white suits, distinct arm positions and a small assessment device. Rest frames have a horizontal pose with subtle suit movement; later polish can add equipment-specific interaction. Pixi `AnimatedSprite` frame changes and Ticker-driven travel are visual only. Arrival transitions stop walking and select activity frames. Fatigue slows travel. Selection outlines and amber/red markers are separate effect-layer graphics. With reduced-motion preferences, sprite cycles stop and travel snaps to the correct activity location; this does not change the simulation.
 
 ## Environment
 
-Medical bay: cross cabinet, monitor and examination bed. Exercise: rack, dumbbells and treadmill. Quarters: stacked sleeping pods. Control: screens and consoles. Common: food lockers, shared table, mug and plant. Exterior includes stars, a stepped Mars silhouette, observation deck and service conduits.
+Medical bay: blue-cross cabinet, waveform monitor, scanner arm and examination bed. Exercise: resistance rack/cables, dumbbells and braced treadmill. Quarters: stacked sleeping compartments, privacy shutters and blue blankets. Control: screens, drawers and physical keyboards. Common/science area: experiment storage, food lockers, shared table, mug and plant growth sample. Exterior includes stars, a stepped Mars silhouette, panoramic observation deck, radiators and service rails. Original bitmap PULSE and ARES-01 hull labels reinforce the fictional mission identity.
 
 Current layering: baked sky → baked hull/walls → baked props → transparent interactive station zones/labels → selection and health effects → animated astronauts. Future refinements should split occluding props and foreground into separate layers, retaining integer coordinates and consistent sprite density.

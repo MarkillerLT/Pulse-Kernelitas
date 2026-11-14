@@ -55,6 +55,7 @@ export function createMission(seed = 2049): MissionState {
     events: [
       {
         id: 'briefing',
+        astronautIds: ['okafor'],
         day: 1,
         severity: 'warning',
         title: 'A quiet warning',
