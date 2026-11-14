@@ -1,0 +1,6 @@
+node_modules
+dist
+.tooling
+.cache
+pnpm-lock.yaml
+public/assets
