@@ -1,18 +1,18 @@
 import type { CrewId } from '../domain/content/crew'
-import azulClaroFront from '../assets/characters/AzulClaroFront.jpeg'
-import azulClaroBack from '../assets/characters/AzulClaroBack.jpeg'
-import azulOscuroFront from '../assets/characters/AzulOscuroFront.jpeg'
-import azulOscuroBack from '../assets/characters/AzulOscuroBack.jpeg'
-import naranjaFront from '../assets/characters/NaranjaFront.jpeg'
-import naranjaBack from '../assets/characters/NaranjaBack.jpeg'
-import rojoFront from '../assets/characters/RojoFront.jpeg'
-import rojoBack from '../assets/characters/RojoBack.jpeg'
-import verdeFront from '../assets/characters/VerdeFront.jpeg'
-import verdeBack from '../assets/characters/VerdeBack.jpeg'
+import azulClaroFront from '../assets/characters/pixel/AzulClaroFront.png'
+import azulClaroBack from '../assets/characters/pixel/AzulClaroBack.png'
+import azulOscuroFront from '../assets/characters/pixel/AzulOscuroFront.png'
+import azulOscuroBack from '../assets/characters/pixel/AzulOscuroBack.png'
+import naranjaFront from '../assets/characters/pixel/NaranjaFront.png'
+import naranjaBack from '../assets/characters/pixel/NaranjaBack.png'
+import rojoFront from '../assets/characters/pixel/RojoFront.png'
+import rojoBack from '../assets/characters/pixel/RojoBack.png'
+import verdeFront from '../assets/characters/pixel/VerdeFront.png'
+import verdeBack from '../assets/characters/pixel/VerdeBack.png'
 
 /**
- * Sprite sheets from src/assets/characters: 1248×624 JPEGs, front/back views, with the character
- * drawn in the left square half on black. The color → character mapping lives only here.
+ * 16×16 transparent sprites extracted from the character sheets in src/assets/characters
+ * (scripts/extract-crew-sprites.py). The color → character mapping lives only here.
  */
 export interface CrewSpriteSet {
   front: string

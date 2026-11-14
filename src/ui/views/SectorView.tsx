@@ -40,6 +40,7 @@ export function SectorView() {
   const sector = SECTORS[sectorId]
   const Icon = SECTOR_ICONS[sectorId]
   const missions = MISSION_LIST.filter((m) => m.sectorId === sectorId)
+  const tasks = game.tasks.filter((t) => t.sectorId === sectorId)
   const monitored = MONITORED[sectorId]
   const links = LINKS[sectorId] ?? []
   const next = SECTOR_IDS[(SECTOR_IDS.indexOf(sectorId) + 1) % SECTOR_IDS.length]
@@ -114,6 +115,22 @@ export function SectorView() {
               </ul>
             </Panel>
           )}
+          <Panel title="Tareas en este sector" code={`${tasks.length}`}>
+            {tasks.length === 0 ? (
+              <p className="muted">Sin incidencias.</p>
+            ) : (
+              <ul className="plain-list">
+                {tasks.map((t) => (
+                  <li key={t.id}>
+                    <Link to="/" className="link-arrow">
+                      {t.status === 'active' ? 'En curso' : 'Pendiente'} · {t.title}{' '}
+                      <ChevronRight size={14} aria-hidden="true" />
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </Panel>
           <Panel title="Misiones asociadas" code={`${missions.length}`}>
             {missions.length === 0 ? (
               <p className="muted">Ninguna misión registrada en este sector.</p>
@@ -121,7 +138,7 @@ export function SectorView() {
               <ul className="plain-list">
                 {missions.map((m) => (
                   <li key={m.id}>
-                    <Link to={`/missions/${m.id}`} className="link-arrow">
+                    <Link to="/missions" className="link-arrow">
                       {pad(m.number, 2)} · {m.title} <ChevronRight size={14} aria-hidden="true" />
                     </Link>
                   </li>

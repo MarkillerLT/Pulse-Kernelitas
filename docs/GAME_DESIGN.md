@@ -1,38 +1,78 @@
-# Diseño de juego — estado de implementación
+# Diseño de juego — RPG de decisiones
 
-Fuente: documento de diseño de ELYSIUM (prompt maestro). Este archivo registra qué está
-implementado, qué interpretaciones se hicieron y qué falta definir. No se inventaron reglas.
+N0VA-7 supervisa un viaje de **30 días**. El tiempo corre en tiempo real (1 hora de juego = 2 s a 1×)
+y se pausa solo cuando hace falta decidir. El jugador no mueve a los astronautas: decide qué hacen,
+y ellos caminan solos por la nave hacia su sector.
 
-## Implementado
+## Bucle
 
-- 5 tripulantes con estadísticas iniciales (§6.2) y especialidades (§6.3) exactas.
-- Rangos y etiquetas de las 5 estadísticas (§6.1); estrés con escala invertida.
-- Límite 0–100 en todas las operaciones.
-- Catálogo completo de estados permanentes, únicos y legendarios (§6.4–6.6). Hipervigilancia se conserva como dos entradas (Sueño y Estrés).
-- Límites numéricos de estados aplicados al hacer clamp: Lesión Crónica (Salud máx. 80), Desmotivación Crónica (Moral máx. 80), Rencor (Confianza máx. 70), Ruptura de Autoridad (Confianza máx. 50), Lealtad Inquebrantable (Confianza mín. 40).
-- Misión 1, El Satélite Fantasma, completa: base del equipo óptimo, sin Lyra (+15 Estrés / −10 Sueño a participantes), sin Zara (−25 Salud a un participante al azar, registrado), sin Orion (+10 Estrés / −5 Confianza a participantes).
-- Misiones 2–5 como datos (equipo óptimo, consecuencias, penalizaciones, rutas de la misión 5). No se pueden lanzar.
-- 8 sectores con función y equipamiento; el Centro Médico y el Módulo Habitacional muestran las estadísticas que les corresponden.
-- Reglas de recuperación (§7) como catálogo de datos en `domain/rules/recovery.ts`, con lo que falta para cada una.
+1. Vigilar: estadísticas de la tripulación y sistemas de la nave.
+2. Surgen tareas con plazo (eventos, solicitudes y misiones). Las críticas y urgentes pausan el juego.
+3. Decidir: opción + equipo. Se muestra la probabilidad de éxito con su desglose.
+4. Advertencias: Estrés ≥ 76, Sueño ≤ 24 o Salud ≤ 24 → "Mandar de igual forma" (Confianza −5).
+5. Resultado al terminar la tarea: éxito o fallo con su causa principal; muchos fallos permiten reintentar.
+6. Ignorar una tarea hasta su plazo aplica su consecuencia.
 
-## Interpretaciones (revisables)
+## Probabilidad de éxito (`rules/chance.ts`)
 
-| Tema                                  | Decisión                                                                                                    | Motivo                                                                                                  |
-| ------------------------------------- | ----------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
-| Participantes fuera del equipo óptimo | Sin consecuencia base; reciben solo las penalizaciones dirigidas a "participantes".                         | El diseño solo define la base de los miembros óptimos.                                                  |
-| Penalización sin Zara                 | El participante al azar se elige entre los enviados.                                                        | "Un personaje al azar" en el contexto de la misión.                                                     |
-| Información sin equipo óptimo         | Se registra como "no determinada".                                                                          | El diseño solo define "Se obtiene toda la información" con el equipo óptimo.                            |
-| Disponibilidad                        | Bloquean: Salud 0, Moral 0 ("Se niega a cooperar"), Sueño 0 ("Colapso inmediato"). Confianza 0 solo alerta. | Estados terminales de §6.1; "Desobediencia" describe un comportamiento futuro, no una indisponibilidad. |
-| Turno                                 | Avanza 1 por misión resuelta.                                                                               | No hay sistema de tiempo definido.                                                                      |
-| Misión completada                     | No se repite.                                                                                               | "Misiones completadas / disponibles" en los requisitos.                                                 |
-| Orden de aplicación                   | Se suman todas las consecuencias y se limita una sola vez.                                                  | Evita aplicar dos veces o depender del orden.                                                           |
+- Tareas: base de la opción + 4,5 % × mejor nivel de la especialidad requerida + 5 % por cada miembro extra + media de las penalizaciones del equipo. Se limita a 5–95 %.
+- Misiones: 75 % con el equipo óptimo, −15 % por cada ausente, + media de las penalizaciones.
+- Penalizaciones por miembro (según los rangos del §6.1): Estrés 51–75 −10 %, ≥76 −20 %; Sueño o Salud 25–49 −10 %, ≤24 −20 %; Moral 25–49 −5 %, ≤24 −10 %; Confianza ≤24 −10 %.
 
-## Pendiente de definición en el diseño
+## Desgaste por hora (`rules/drift.ts`)
 
-- Recursos de la nave (tipos, valores iniciales, consumo): lo necesitan misiones 2–5, §7 y las alertas de recursos.
-- Disparadores de estados permanentes ("durante varias misiones", "sobreexplotar", etc.).
-- Magnitudes no cuantificadas: Resentimiento (Confianza máxima reducida), Hipervigilancia (Sueño < 100), rangos de §7 (+5 a +15, etc.).
-- Fórmula de recuperación de Sueño según Estrés (solo hay dos ejemplos: 20 → +25, 90 → +10).
-- Alcance de "todos" en misiones 2 y 4 (participantes o tripulación completa) y la sustitución "Moral +5 solamente" de la misión 4.
-- Acciones fuera de misión (descanso, recreación): requieren un sistema de turnos.
-- Muerte frente a incapacidad con Salud 0; estados legendarios y finales.
+| Actividad                                   | Sueño                                                | Estrés        | Otros                                         |
+| ------------------------------------------- | ---------------------------------------------------- | ------------- | --------------------------------------------- |
+| En su puesto                                | −1,2                                                 | +0,3          | Kai produce comida; Lyra, energía             |
+| Tarea / misión                              | −1,8                                                 | +0,8 / +0,5   | + desgaste de la tarea al terminar            |
+| Descanso (8 h; de 22:00 a 06:00 automático) | +25 por turno, menos con estrés (20 → +25, 90 → +10) | −10 por turno | Salud +0,25/h                                 |
+| Tiempo libre (4 h)                          | −0,8                                                 | −15           | Moral +5                                      |
+| Enfermería                                  | —                                                    | −0,5          | Salud +10 por turno de 8 h; consume medicinas |
+
+Además, del §7: Sueño < 30 → el estrés sube al doble y la salud se recupera a la mitad; Moral < 30 → el estrés baja a la mitad; Moral < 20 → la salud se recupera a la mitad; Estrés > 80 → Moral −5 cada día.
+
+## Confianza (§7)
+
+- Conceder un descanso solicitado: +5. Denegarlo: −5 (y Estrés +5). Ignorarlo: −5.
+- Priorizar el bienestar (mandar a descansar, a tiempo libre o a la enfermería a alguien saturado o agotado): +10, una vez al día.
+- Forzar una orden: −5. Tres veces → **Rencor** (Confianza máxima 70).
+
+## Estados permanentes activos
+
+- **Rencor:** tres órdenes forzadas.
+- **Insomnio:** colapsar dos veces por Sueño 0.
+- **Lesión Crónica:** 48 h seguidas con Salud < 25.
+- **Duelo:** al morir un compañero (Moral −15 además de −20).
+- **Culpa del Comandante:** Orion recibe +15 de Estrés por cada muerte.
+
+Los multiplicadores de recuperación de los demás estados ya están en `conditionMultipliers` y se activarán cuando tengan desencadenante.
+
+## Salud 0, colapso y muerte
+
+- Salud 0 → incapacitado y trasladado a la enfermería. Tras 24 h seguidas en 0, muere.
+- Sueño 0 → colapsa y queda 8 h fuera de servicio.
+- Moral 0 → se niega a cooperar (no acepta tareas).
+
+## Misiones (§8–9)
+
+Aparecen el día indicado a las 09:00 y hay 24 h para enviar un equipo (1–3 tripulantes). Las consecuencias del documento se aplican tanto si sale bien como si sale mal; la recompensa solo llega con éxito. Un fallo resta Moral y abre "Reintentar misión"; dejarla vencer la pierde.
+
+| Misión                    | Día | Recompensa (decidida para el juego)                          |
+| ------------------------- | --- | ------------------------------------------------------------ |
+| El Satélite Fantasma      | 2   | Energía +10                                                  |
+| Brote en los Huertos      | 7   | Comida +25 (sin Kai: ×0,6)                                   |
+| Campo de Asteroides       | 13  | Energía +30 (sin Lyra: ×0,5); casco −5 siempre               |
+| La Señal de Auxilio       | 19  | Moral +15 y Confianza +20 a todos (sin Orion: solo Moral +5) |
+| El Corazón de la Tormenta | 25  | La tormenta daña la nave; cada ruta protege un sistema       |
+
+## Interpretaciones del documento
+
+- "Todos" en las penalizaciones = participantes, salvo en las de Moral ("Moral −10/−15 para todos"), que afectan a toda la tripulación.
+- Los participantes fuera del equipo óptimo no tienen consecuencia base; solo reciben las penalizaciones.
+- "Éxito en misiones: +5 a +20 Moral" → +10 para el equipo.
+- "Toda recuperación futura −50 %" (tormenta sin Elias) → multiplicador permanente de recuperación ×0,5.
+- Los valores de la nave, los eventos aleatorios y sus probabilidades son diseño propio del juego, documentado en `content/events.ts` y `content/ship.ts`.
+
+## Equilibrio
+
+`tests/domain/balance.test.ts` juega partidas completas: un N0VA-7 pasivo pierde siempre (días 7–17) y uno competente suele llegar al destino.

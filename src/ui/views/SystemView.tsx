@@ -7,11 +7,16 @@ import { ConfirmDialog } from '../components/ConfirmDialog'
 import { PageHeader } from '../components/PageHeader'
 import { Panel } from '../components/Panel'
 import { formatTimestamp, pad } from '../format'
+import { formatClock } from '../activity'
+import { dayOf } from '../../domain/engine/state'
 
 export function SystemView() {
   const game = useGame((s) => s.game)
   const persistence = useGame((s) => s.persistence)
-  const { exportSave, importSave, resetGame, setReducedMotion } = useGame((s) => s)
+  const exportSave = useGame((s) => s.exportSave)
+  const importSave = useGame((s) => s.importSave)
+  const resetGame = useGame((s) => s.resetGame)
+  const setSetting = useGame((s) => s.setSetting)
   const fileInput = useRef<HTMLInputElement>(null)
   const [importMessage, setImportMessage] = useState<string | null>(null)
 
@@ -20,7 +25,7 @@ export function SystemView() {
     const url = URL.createObjectURL(blob)
     const link = document.createElement('a')
     link.href = url
-    link.download = `elysium-turno-${pad(game.turn)}.json`
+    link.download = `elysium-dia-${pad(dayOf(game.hour), 2)}.json`
     link.click()
     URL.revokeObjectURL(url)
   }
@@ -56,8 +61,8 @@ export function SystemView() {
               <dd>{formatTimestamp(game.updatedAt)}</dd>
             </div>
             <div>
-              <dt>Turno</dt>
-              <dd>{pad(game.turn)}</dd>
+              <dt>Reloj de la nave</dt>
+              <dd>{formatClock(game.hour)}</dd>
             </div>
           </dl>
           <p className="small muted">
@@ -97,10 +102,18 @@ export function SystemView() {
           <label className="toggle">
             <input
               type="checkbox"
-              checked={game.settings.reducedMotion}
-              onChange={(e) => setReducedMotion(e.target.checked)}
+              checked={game.settings.autoPause}
+              onChange={(e) => setSetting('autoPause', e.target.checked)}
             />
-            <span>Reducir animaciones (muestra los informes completos de inmediato)</span>
+            <span>Pausa automática cuando surge una decisión urgente o una crisis</span>
+          </label>
+          <label className="toggle">
+            <input
+              type="checkbox"
+              checked={game.settings.reducedMotion}
+              onChange={(e) => setSetting('reducedMotion', e.target.checked)}
+            />
+            <span>Reducir animaciones (los tripulantes aparecen en su destino sin caminar)</span>
           </label>
         </Panel>
 

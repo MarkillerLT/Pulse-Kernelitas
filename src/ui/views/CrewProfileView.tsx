@@ -2,7 +2,6 @@ import { Link, useParams } from 'react-router'
 import { ArrowLeft, ChevronRight } from 'lucide-react'
 import { CONDITIONS, CONDITION_CATEGORY_LABELS } from '../../domain/content/conditions'
 import { CREW, CREW_IDS, SPECIALTY_LABELS, isCrewId } from '../../domain/content/crew'
-import { getMission } from '../../domain/content/missions'
 import { STAT_CONSEQUENCES, STAT_KEYS, STAT_LABELS } from '../../domain/model/stats'
 import { getAvailability } from '../../domain/rules/availability'
 import { getStatBounds, readStat } from '../../domain/rules/stats'
@@ -14,7 +13,7 @@ import { PageHeader } from '../components/PageHeader'
 import { Panel } from '../components/Panel'
 import { SpecialtyGrid } from '../components/SpecialtyGrid'
 import { StatMeter } from '../components/StatMeter'
-import { pad } from '../format'
+import { formatClock } from '../activity'
 import { NotFoundView } from './NotFoundView'
 
 export function CrewProfileView() {
@@ -25,10 +24,13 @@ export function CrewProfileView() {
   const crew = CREW[crewId]
   const state = game.crew[crewId]
   const bounds = getStatBounds(state.conditions)
-  const availability = getAvailability(state.stats)
+  const availability = getAvailability(state)
   const index = CREW_IDS.indexOf(crewId)
   const next = CREW_IDS[(index + 1) % CREW_IDS.length]
-  const history = game.log.filter((entry) => entry.crewIds.includes(crewId)).reverse()
+  const history = game.log
+    .filter((entry) => entry.crewIds.includes(crewId) && entry.kind !== 'system')
+    .reverse()
+    .slice(0, 20)
 
   return (
     <div className="page">
@@ -118,29 +120,35 @@ export function CrewProfileView() {
             ))}
           </ul>
           <p className="muted small">
-            Los estados únicos están documentados pero no se activan todavía: el diseño no define
-            sus desencadenantes exactos.
+            Los estados permanentes se adquieren por lo que ocurre en el viaje (p. ej. Rencor tras
+            tres órdenes forzadas, Insomnio tras colapsar dos veces). Los estados únicos están
+            documentados y aún no tienen desencadenante.
           </p>
         </Panel>
 
-        <Panel title="Historial de misiones" code={`${history.length}`} className="profile-history">
+        <Panel title="Historial reciente" code={`${history.length}`} className="profile-history">
           {history.length === 0 ? (
-            <p className="muted">Todavía no ha participado en misiones.</p>
+            <p className="muted">Sin registros todavía.</p>
           ) : (
             <ul className="event-list">
               {history.map((entry) => {
                 const change = entry.changes.find((c) => c.crewId === crewId)
                 return (
                   <li key={entry.id}>
-                    <Link to={`/log/${entry.id}`}>
-                      <span className="mono">T{pad(entry.turn)}</span>
-                      <strong>{getMission(entry.missionId)?.title}</strong>
+                    <Link to="/log">
+                      <span className="mono">{formatClock(entry.hour)}</span>
+                      <strong>{entry.title}</strong>
                       <span className="delta-row">
                         {change &&
-                          STAT_KEYS.filter((k) => change.after[k] !== change.before[k]).map((k) => (
+                          STAT_KEYS.filter(
+                            (k) => Math.round(change.after[k]) !== Math.round(change.before[k]),
+                          ).map((k) => (
                             <span key={k}>
                               {STAT_LABELS[k]}{' '}
-                              <DeltaValue stat={k} value={change.after[k] - change.before[k]} />
+                              <DeltaValue
+                                stat={k}
+                                value={Math.round(change.after[k]) - Math.round(change.before[k])}
+                              />
                             </span>
                           ))}
                       </span>

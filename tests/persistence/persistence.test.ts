@@ -9,7 +9,7 @@ import {
   serializeSave,
   type StorageLike,
 } from '../../src/persistence/saveGame'
-import { createGameStore } from '../../src/store/gameStore'
+import { HOUR_MS, createGameStore } from '../../src/store/gameStore'
 
 const NOW = '2026-11-14T12:00:00.000Z'
 
@@ -81,72 +81,92 @@ describe('save files', () => {
 })
 
 describe('game store persistence', () => {
-  const order = { missionId: 'ghost-satellite', crewIds: ['orion', 'lyra', 'zara'] }
+  const deps = () => ({ storage, now: () => NOW, seed: 5 })
+  const firstTask = (store: ReturnType<typeof createGameStore>) => store.getState().game.tasks[0]
 
-  it('starts a new saved game when there is no save', () => {
-    const store = createGameStore({ storage, now: () => NOW })
-    expect(store.getState().game.turn).toBe(1)
+  it('starts a new saved game, paused, when there is no save', () => {
+    const store = createGameStore(deps())
+    expect(store.getState().game.hour).toBe(8)
+    expect(store.getState().speed).toBe(0)
     expect(storage.getItem(SAVE_KEY)).not.toBeNull()
     expect(store.getState().persistence).toBe('saved')
   })
 
-  it('autosaves after a mission and restores it after a reload', () => {
-    const store = createGameStore({ storage, now: () => NOW })
-    const result = store.getState().launchMission(order)
-    expect(result.ok).toBe(true)
-    // Simulates closing and reopening the app: a brand new store reading the same storage.
-    const reloaded = createGameStore({ storage, now: () => NOW })
-    const game = reloaded.getState().game
-    expect(game.turn).toBe(2)
-    expect(game.crew.zara.stats.health).toBe(85)
-    expect(game.missions['ghost-satellite']).toBe('completed')
-    expect(game.log).toHaveLength(1)
+  it('converts real time into game hours only while running', () => {
+    const store = createGameStore(deps())
+    store.getState().tick(10_000)
+    expect(store.getState().game.hour).toBe(8)
+    store.getState().setSpeed(2)
+    store.getState().tick(HOUR_MS) // 2× → two hours
+    expect(store.getState().game.hour).toBe(10)
   })
 
-  it('does not change the state when a launch is invalid', () => {
-    const store = createGameStore({ storage, now: () => NOW })
+  it('autosaves decisions and restores them after a reload', () => {
+    const store = createGameStore(deps())
+    const task = firstTask(store)
+    expect(
+      store.getState().assign({ taskId: task.id, optionId: 'replace', crewIds: ['lyra'] }).ok,
+    ).toBe(true)
+    const reloaded = createGameStore(deps())
+    expect(reloaded.getState().game.crew.lyra.activity).toBe('task')
+    expect(reloaded.getState().game.tasks[0].status).toBe('active')
+    expect(reloaded.getState().speed).toBe(0)
+  })
+
+  it('does not change the state when a decision is invalid', () => {
+    const store = createGameStore(deps())
     const before = store.getState().game
-    const result = store.getState().launchMission({ ...order, crewIds: [] })
+    const result = store
+      .getState()
+      .assign({ taskId: firstTask(store).id, optionId: 'replace', crewIds: [] })
     expect(result.ok).toBe(false)
     expect(store.getState().game).toBe(before)
   })
 
   it('reset replaces the progress with a new game, also after reload', () => {
-    const store = createGameStore({ storage, now: () => NOW })
-    store.getState().launchMission(order)
+    const store = createGameStore(deps())
+    store.getState().setSpeed(4)
+    store.getState().tick(HOUR_MS * 6)
     store.getState().resetGame()
-    expect(store.getState().game.turn).toBe(1)
-    const reloaded = createGameStore({ storage, now: () => NOW })
-    expect(reloaded.getState().game.log).toEqual([])
-    expect(reloaded.getState().game.crew.zara.stats.health).toBe(100)
+    expect(store.getState().game.hour).toBe(8)
+    expect(createGameStore(deps()).getState().game.hour).toBe(8)
   })
 
   it('recovers from a corrupt save with a warning and a backup', () => {
     storage.setItem(SAVE_KEY, 'garbage')
-    const store = createGameStore({ storage, now: () => NOW })
-    expect(store.getState().notice?.tone).toBe('warning')
-    expect(store.getState().game.turn).toBe(1)
+    const store = createGameStore(deps())
+    expect(store.getState().notices[0].tone).toBe('warning')
     expect(storage.getItem(BACKUP_KEY)).toBe('garbage')
   })
 
+  it('treats a save from the previous prototype (v1) as incompatible', () => {
+    const raw = JSON.parse(serializeSave(createGame({ now: NOW }), NOW))
+    raw.version = 1
+    const parsed = parseSave(JSON.stringify(raw))
+    expect(parsed.ok).toBe(false)
+  })
+
   it('exports and imports a save', () => {
-    const store = createGameStore({ storage, now: () => NOW })
-    store.getState().launchMission(order)
+    const store = createGameStore(deps())
+    store.getState().setSpeed(1)
+    store.getState().tick(HOUR_MS * 3)
     const exported = store.getState().exportSave()
+    const hour = store.getState().game.hour
     store.getState().resetGame()
     expect(store.getState().importSave(exported)).toEqual({ ok: true })
-    expect(store.getState().game.turn).toBe(2)
+    expect(store.getState().game.hour).toBe(hour)
     expect(store.getState().importSave('nope').ok).toBe(false)
-    expect(store.getState().game.turn).toBe(2)
   })
 
   it('keeps playing in memory and warns when storage rejects writes', () => {
-    const store = createGameStore({ storage, now: () => NOW })
+    const store = createGameStore(deps())
     storage.failWrites = true
-    const result = store.getState().launchMission(order)
-    expect(result.ok).toBe(true)
-    expect(store.getState().game.turn).toBe(2)
+    expect(
+      store
+        .getState()
+        .assign({ taskId: firstTask(store).id, optionId: 'replace', crewIds: ['lyra'] }).ok,
+    ).toBe(true)
     expect(store.getState().persistence).toBe('unavailable')
-    expect(store.getState().notice?.tone).toBe('error')
+    expect(store.getState().notices.some((n) => n.tone === 'error')).toBe(true)
   })
 })

@@ -7,7 +7,8 @@ export type StatKey = (typeof STAT_KEYS)[number]
 export const STAT_MIN = 0
 export const STAT_MAX = 100
 
-export const statValueSchema = z.number().int().min(STAT_MIN).max(STAT_MAX)
+/** Stats drift by fractions each hour; the interface rounds them for display. */
+export const statValueSchema = z.number().min(STAT_MIN).max(STAT_MAX)
 export const statsSchema = z.object({
   health: statValueSchema,
   morale: statValueSchema,

@@ -1,57 +1,48 @@
 import { Link } from 'react-router'
-import { FileText, Lock, Rocket } from 'lucide-react'
 import { CREW, firstName } from '../../domain/content/crew'
-import { MISSION_LIST, type MissionDefinition } from '../../domain/content/missions'
+import { MISSION_LIST } from '../../domain/content/missions'
 import { SECTORS } from '../../domain/content/sectors'
-import type { GameState } from '../../domain/model/game'
+import type { MissionStatus } from '../../domain/model/game'
 import { useGame } from '../../store/gameStore'
 import { CrewSprite } from '../components/CrewSprite'
 import { PageHeader } from '../components/PageHeader'
 import { pad } from '../format'
 
-type MissionView = 'available' | 'completed' | 'design'
-
-function missionViewStatus(mission: MissionDefinition, game: GameState): MissionView {
-  if (game.missions[mission.id] === 'completed') return 'completed'
-  return mission.implemented ? 'available' : 'design'
-}
-
-const STATUS_LABEL: Record<MissionView, string> = {
-  available: 'Disponible',
-  completed: 'Completada',
-  design: 'En diseño',
-}
-const STATUS_TAG: Record<MissionView, string> = {
-  available: 'tag-ok',
-  completed: 'tag-info',
-  design: 'tag-muted',
+const STATUS: Record<MissionStatus, { label: string; tag: string }> = {
+  pending: { label: 'Próximamente', tag: 'tag-muted' },
+  available: { label: 'Disponible', tag: 'tag-ok' },
+  active: { label: 'En curso', tag: 'tag-info' },
+  completed: { label: 'Cumplida', tag: 'tag-ok' },
+  failed: { label: 'Fallida · reintentar', tag: 'tag-warn' },
+  lost: { label: 'Perdida', tag: 'tag-critical' },
 }
 
 export function MissionsView() {
   const game = useGame((s) => s.game)
   return (
     <div className="page">
-      <PageHeader eyebrow="Asignación de tareas" title="Misiones">
-        Asigna hasta tres tripulantes por misión. La composición del equipo determina las
-        consecuencias.
+      <PageHeader eyebrow="Bitácora del viaje" title="Misiones">
+        Cinco hitos del viaje. Cada misión aparece en la lista de tareas del Puente el día indicado,
+        a las 09:00, y hay 24 horas para enviar un equipo.
       </PageHeader>
       <ol className="mission-list">
         {MISSION_LIST.map((mission) => {
-          const status = missionViewStatus(mission, game)
-          const report = game.log.findLast((entry) => entry.missionId === mission.id)
+          const status = game.missions[mission.id]
+          const open = status === 'available' || status === 'failed'
           return (
             <li key={mission.id} className={`mission-card is-${status}`}>
               <div className="mission-card-head">
                 <span className="mission-number">{pad(mission.number, 2)}</span>
                 <div>
                   <h2>{mission.title}</h2>
-                  <span className="muted small">{SECTORS[mission.sectorId].name}</span>
+                  <span className="muted small">
+                    Día {mission.day} · {SECTORS[mission.sectorId].name} · {mission.durationHours} h
+                    fuera
+                  </span>
                 </div>
-                <span className={`tag ${STATUS_TAG[status]}`}>{STATUS_LABEL[status]}</span>
+                <span className={`tag ${STATUS[status].tag}`}>{STATUS[status].label}</span>
               </div>
-              <p>
-                {mission.objective ?? 'Objetivo pendiente de definición en el documento de diseño.'}
-              </p>
+              <p>{mission.objective}</p>
               <div className="mission-card-meta">
                 <div>
                   <h3 className="subhead">Riesgos</h3>
@@ -80,28 +71,24 @@ export function MissionsView() {
                   ))}
                 </div>
               </div>
-              <div className="mission-card-actions">
-                {status === 'available' && (
-                  <Link to={`/missions/${mission.id}`} className="btn btn-primary">
-                    <Rocket size={14} aria-hidden="true" /> Preparar misión
-                  </Link>
-                )}
-                {status === 'completed' && report && (
-                  <Link to={`/log/${report.id}`} className="btn">
-                    <FileText size={14} aria-hidden="true" /> Ver informe
-                  </Link>
-                )}
-                {status === 'design' && (
-                  <>
-                    <span className="muted small">
-                      <Lock size={12} aria-hidden="true" /> No operativa en este prototipo
-                    </span>
-                    <Link to={`/missions/${mission.id}`} className="btn btn-ghost">
-                      Ver ficha
-                    </Link>
-                  </>
-                )}
-              </div>
+              <details className="design-notes">
+                <summary>Penalizaciones por ausencia</summary>
+                <ul className="plain-list small">
+                  {mission.routes.flatMap((route) =>
+                    route.absenceRules.map((rule) => (
+                      <li key={route.id + rule.crewId}>
+                        {mission.routes.length > 1 && `${route.name} · `}Sin{' '}
+                        {firstName(rule.crewId)}: {rule.summary}
+                      </li>
+                    )),
+                  )}
+                </ul>
+              </details>
+              {open && (
+                <Link to="/" className="btn btn-primary">
+                  Ir al Puente para asignar equipo
+                </Link>
+              )}
             </li>
           )
         })}

@@ -4,8 +4,8 @@ RPG de supervivencia espacial y gestión de tripulación. El jugador es **N0VA-7
 artificial central de la nave Elysium: supervisa a cinco astronautas, evalúa riesgos y asigna
 misiones. Cada decisión tiene consecuencias.
 
-Prototipo funcional: la misión **El Satélite Fantasma** se resuelve con reglas reales, aplica
-consecuencias a las estadísticas, queda registrada en el historial y se conserva entre sesiones.
+RPG de decisiones en tiempo real con pausa: un viaje de 30 días en el que N0VA-7 vigila las
+estadísticas, responde a crisis y elige a quién enviar a cada tarea.
 
 ## Ejecutar
 
@@ -32,12 +32,16 @@ Para Playwright con un Chromium del sistema:
 
 ## Cómo jugar
 
-1. **Puente Armstrong** (`/`): estado de la nave, alertas, monitores de la tripulación, últimos eventos y accesos.
-2. **Misiones** → _El Satélite Fantasma_ → revisa riesgos, equipo óptimo y penalizaciones por ausencia.
-3. Selecciona de 1 a 3 tripulantes. La vista previa muestra penalizaciones activas y consecuencias previstas.
-4. **Lanzar misión** → confirma → secuencia de resolución → informe con los cambios de cada tripulante.
-5. Vuelve al puente: las estadísticas ya están actualizadas. Recarga la página y el progreso sigue ahí.
-6. **Sistema** (`/system`): exportar o importar la partida en JSON, reducir animaciones y reiniciar la partida (con confirmación).
+Eres N0VA-7. No controlas a los astronautas: decides qué hacen.
+
+1. **Puente** (`/`): reloj de la nave, sistemas (soporte vital, energía, casco, comida y medicinas), plano de la Elysium con la tripulación caminando, lista de tareas y estado de cada tripulante.
+2. El tiempo arranca en **pausa**. Usa 1×, 2× o 4× (o la barra espaciadora). Cada hora las estadísticas cambian según lo que hace cada tripulante; de noche duermen solos.
+3. Surgen **tareas** ("El motor se incendia", "Plaga en los cultivos", solicitudes de descanso…). Elige una opción, selecciona a quién mandas y revisa la **probabilidad de éxito** y sus causas.
+4. Si alguien está saturado o agotado verás "Advertencia: niveles de estrés altos". Puedes **Mandar de igual forma**, pero pierde confianza (y tras tres veces le queda Rencor).
+5. Los fallos explican su causa y permiten **reintentar**. Las tareas ignoradas tienen consecuencias.
+6. Las 5 **misiones** del documento aparecen en los días 2, 7, 13, 19 y 25. El equipo óptimo da un 75 % de éxito y cada ausencia lo reduce.
+7. También puedes dar órdenes directas: Descansar, Tiempo libre, Enfermería o Volver al puesto.
+8. Ganas si llegas al día 31. Pierdes si el soporte vital o el casco llegan a 0, o si muere toda la tripulación. La partida se guarda sola.
 
 ## Documentación
 

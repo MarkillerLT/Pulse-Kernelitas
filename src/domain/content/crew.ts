@@ -1,4 +1,5 @@
 import type { Stats } from '../model/stats'
+import type { SectorId } from './sectors'
 
 /** Static crew definitions (design doc §6.2–6.3). Never persisted: saves store only mutable state. */
 export const CREW_IDS = ['orion', 'lyra', 'elias', 'zara', 'kai'] as const
@@ -27,6 +28,8 @@ export interface CrewDefinition {
   name: string
   /** Primary specialty, used as the character's role. */
   primarySpecialty: SpecialtyKey
+  /** Sector where the member works while on duty. */
+  homeSector: SectorId
   specialties: Specialties
   initialStats: Stats
   /** Character-specific states the design document lists (§6.5). Potential, not active. */
@@ -36,6 +39,7 @@ export interface CrewDefinition {
 export const CREW: Readonly<Record<CrewId, CrewDefinition>> = {
   orion: {
     id: 'orion',
+    homeSector: 'armstrong',
     name: 'Orion Vega',
     primarySpecialty: 'leadership',
     specialties: { leadership: 10, technical: 4, medicine: 3, exploration: 6, agriculture: 2 },
@@ -44,6 +48,7 @@ export const CREW: Readonly<Record<CrewId, CrewDefinition>> = {
   },
   lyra: {
     id: 'lyra',
+    homeSector: 'gagarin',
     name: 'Lyra Kess',
     primarySpecialty: 'technical',
     specialties: { leadership: 4, technical: 10, medicine: 3, exploration: 4, agriculture: 1 },
@@ -52,6 +57,7 @@ export const CREW: Readonly<Record<CrewId, CrewDefinition>> = {
   },
   elias: {
     id: 'elias',
+    homeSector: 'ride',
     name: 'Elias Nova',
     primarySpecialty: 'medicine',
     specialties: { leadership: 6, technical: 4, medicine: 10, exploration: 2, agriculture: 5 },
@@ -60,6 +66,7 @@ export const CREW: Readonly<Record<CrewId, CrewDefinition>> = {
   },
   zara: {
     id: 'zara',
+    homeSector: 'aldrin',
     name: 'Zara Void',
     primarySpecialty: 'exploration',
     specialties: { leadership: 5, technical: 3, medicine: 2, exploration: 10, agriculture: 1 },
@@ -68,6 +75,7 @@ export const CREW: Readonly<Record<CrewId, CrewDefinition>> = {
   },
   kai: {
     id: 'kai',
+    homeSector: 'tereshkova',
     name: 'Kai Verdant',
     primarySpecialty: 'agriculture',
     specialties: { leadership: 6, technical: 4, medicine: 6, exploration: 2, agriculture: 10 },

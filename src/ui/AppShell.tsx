@@ -1,14 +1,12 @@
 import { useEffect } from 'react'
 import { NavLink, Outlet, useLocation } from 'react-router'
-import { Cpu, Map, Rocket, ScrollText, Settings, Users, X, Radar } from 'lucide-react'
+import { Cpu, Map, Monitor, Rocket, ScrollText, Settings, Users, X } from 'lucide-react'
 import { CREW_IDS } from '../domain/content/crew'
-import { getAvailability } from '../domain/rules/availability'
-import { deriveAlerts } from '../domain/rules/alerts'
-import { useGame } from '../store/gameStore'
-import { pad } from './format'
+import { gameStore, useGame, type Notice } from '../store/gameStore'
+import { formatClock } from './activity'
 
 const NAV = [
-  { to: '/', label: 'Puente', icon: Radar, end: true },
+  { to: '/', label: 'Puente', icon: Monitor, end: true },
   { to: '/crew', label: 'Tripulación', icon: Users },
   { to: '/missions', label: 'Misiones', icon: Rocket },
   { to: '/sectors', label: 'Sectores', icon: Map },
@@ -16,15 +14,46 @@ const NAV = [
   { to: '/system', label: 'Sistema', icon: Settings },
 ]
 
-export function AppShell() {
-  const game = useGame((s) => s.game)
-  const notice = useGame((s) => s.notice)
-  const persistence = useGame((s) => s.persistence)
-  const dismissNotice = useGame((s) => s.dismissNotice)
-  const { pathname } = useLocation()
+/** Drives the game clock from real time, whatever page is open. */
+function useGameClock() {
+  useEffect(() => {
+    let last = performance.now()
+    const id = window.setInterval(() => {
+      const now = performance.now()
+      gameStore.getState().tick(now - last)
+      last = now
+    }, 100)
+    return () => window.clearInterval(id)
+  }, [])
+}
 
-  const operational = CREW_IDS.filter((id) => getAvailability(game.crew[id].stats).available).length
-  const critical = deriveAlerts(game).filter((a) => a.severity === 'critical').length
+const TOAST_MS = 8000
+
+function Toast({ notice }: { notice: Notice }) {
+  const onDismiss = () => gameStore.getState().dismissNotice(notice.id)
+  useEffect(() => {
+    const timer = window.setTimeout(() => gameStore.getState().dismissNotice(notice.id), TOAST_MS)
+    return () => window.clearTimeout(timer)
+  }, [notice.id])
+  return (
+    <div className={`notice notice-${notice.tone}`} role="status">
+      <span>{notice.text}</span>
+      <button type="button" className="icon-btn" onClick={onDismiss} aria-label="Cerrar aviso">
+        <X size={14} />
+      </button>
+    </div>
+  )
+}
+
+export function AppShell() {
+  useGameClock()
+  const game = useGame((s) => s.game)
+  const speed = useGame((s) => s.speed)
+  const notices = useGame((s) => s.notices)
+  const persistence = useGame((s) => s.persistence)
+  const { pathname } = useLocation()
+  const alive = CREW_IDS.filter((id) => game.crew[id].activity !== 'dead').length
+  const pending = game.tasks.filter((t) => t.status === 'open').length
 
   useEffect(() => {
     document.documentElement.dataset.motion = game.settings.reducedMotion ? 'reduced' : 'full'
@@ -41,7 +70,7 @@ export function AppShell() {
         Saltar al contenido
       </a>
       <header className="topbar">
-        <NavLink to="/" className="brand" aria-label="ELYSIUM — Puente Armstrong">
+        <NavLink to="/" className="brand" aria-label="ELYSIUM — Puente">
           <Cpu size={18} aria-hidden="true" />
           <span>
             <strong>ELYSIUM</strong>
@@ -50,18 +79,23 @@ export function AppShell() {
         </NavLink>
         <dl className="status-strip" aria-label="Estado de la nave">
           <div>
-            <dt>Turno</dt>
-            <dd>{pad(game.turn)}</dd>
-          </div>
-          <div>
-            <dt>Operativos</dt>
-            <dd className={operational < CREW_IDS.length ? 'text-warn' : undefined}>
-              {operational}/{CREW_IDS.length}
+            <dt>Reloj</dt>
+            <dd>
+              {formatClock(game.hour)}{' '}
+              {speed === 0 && game.status === 'active' && (
+                <span className="text-warn">· pausa</span>
+              )}
             </dd>
           </div>
           <div>
-            <dt>Alertas críticas</dt>
-            <dd className={critical > 0 ? 'text-critical' : undefined}>{critical}</dd>
+            <dt>Tripulación</dt>
+            <dd className={alive < CREW_IDS.length ? 'text-critical' : undefined}>
+              {alive}/{CREW_IDS.length}
+            </dd>
+          </div>
+          <div>
+            <dt>Decisiones</dt>
+            <dd className={pending > 0 ? 'text-warn' : undefined}>{pending}</dd>
           </div>
           <div>
             <dt>Memoria</dt>
@@ -80,23 +114,13 @@ export function AppShell() {
         ))}
       </nav>
       <main id="main-content" tabIndex={-1}>
-        <div aria-live="polite" className="notice-region">
-          {notice && (
-            <div className={`notice notice-${notice.tone}`} role="status">
-              <span>{notice.text}</span>
-              <button
-                type="button"
-                className="icon-btn"
-                onClick={dismissNotice}
-                aria-label="Cerrar aviso"
-              >
-                <X size={14} />
-              </button>
-            </div>
-          )}
-        </div>
         <Outlet />
       </main>
+      <div className="toasts" aria-live="polite">
+        {notices.map((notice) => (
+          <Toast key={notice.id} notice={notice} />
+        ))}
+      </div>
     </div>
   )
 }

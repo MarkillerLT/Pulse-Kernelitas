@@ -12,7 +12,8 @@ interface Props {
 const SEGMENTS = 10
 
 /** Segmented retro meter. The color follows the design ranges, inverted for stress. */
-export function StatMeter({ stat, value, max = 100, compact = false }: Props) {
+export function StatMeter({ stat, value: raw, max = 100, compact = false }: Props) {
+  const value = Math.round(raw)
   const reading = readStat(stat, value)
   const filled = Math.round(value / (100 / SEGMENTS))
   const locked = Math.round((100 - max) / (100 / SEGMENTS))

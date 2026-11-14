@@ -3,9 +3,8 @@ import type { CrewChange } from '../../domain/model/game'
 import { STAT_KEYS, STAT_LABELS } from '../../domain/model/stats'
 import { CrewSprite } from './CrewSprite'
 import { DeltaValue } from './DeltaValue'
-import { describeDelta } from '../format'
 
-/** Before → after for every affected crew member, with the breakdown of each source. */
+/** Before → after for every crew member a decision affected. */
 export function ChangeTable({ changes }: { changes: CrewChange[] }) {
   return (
     <div className="change-list">
@@ -27,37 +26,21 @@ export function ChangeTable({ changes }: { changes: CrewChange[] }) {
             </thead>
             <tbody>
               {STAT_KEYS.map((key) => {
-                const applied = change.after[key] - change.before[key]
-                const requested = change.requested[key] ?? 0
+                const before = Math.round(change.before[key])
+                const after = Math.round(change.after[key])
                 return (
-                  <tr
-                    key={key}
-                    className={applied === 0 && requested === 0 ? 'is-idle' : undefined}
-                  >
+                  <tr key={key} className={before === after ? 'is-idle' : undefined}>
                     <th scope="row">{STAT_LABELS[key]}</th>
-                    <td>{change.before[key]}</td>
+                    <td>{before}</td>
                     <td>
-                      {applied !== 0 ? <DeltaValue stat={key} value={applied} /> : '—'}
-                      {requested !== applied && (
-                        <small className="clamped" title="Limitado por el rango permitido">
-                          {' '}
-                          (límite)
-                        </small>
-                      )}
+                      {after !== before ? <DeltaValue stat={key} value={after - before} /> : '—'}
                     </td>
-                    <td>{change.after[key]}</td>
+                    <td>{after}</td>
                   </tr>
                 )
               })}
             </tbody>
           </table>
-          <ul className="source-list">
-            {change.sources.map((source, i) => (
-              <li key={i}>
-                <span>{source.label}</span> <b>{describeDelta(source.delta)}</b>
-              </li>
-            ))}
-          </ul>
         </article>
       ))}
     </div>

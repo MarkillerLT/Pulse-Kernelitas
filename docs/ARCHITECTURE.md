@@ -1,69 +1,49 @@
 # Arquitectura
 
-Aplicación local: React 19 + Vite 8 + TypeScript. No hay servidor. Un backend no aportaría nada en
-este alcance (sin usuarios, sin multijugador, sin datos remotos), así que la "lógica de servidor" es
-un motor de dominio puro que se ejecuta en el navegador.
+Aplicación local con React 19, Vite 8 y TypeScript. No hay servidor: el motor de juego es puro y
+corre en el navegador.
 
 ```
 src/
-  domain/              Reglas del juego. Sin React, sin DOM, sin almacenamiento, sin reloj.
-    content/           Datos estáticos: crew, missions, sectors, conditions (nunca se guardan)
-    model/             Esquemas Zod + tipos: stats, game (estado persistible)
-    rules/             stats (rangos, límites, clamp), availability, alerts, recovery (catálogo §7)
-    engine/            createGame, analyzeTeam (validación + vista previa), resolveMission, random
-  persistence/         saveGame: localStorage, sobre versionado, validación, respaldo, migraciones
-  store/               gameStore (Zustand): llama al motor, publica el estado y lo guarda
-  ui/                  router, AppShell, components/, views/, sprites, formato
-  assets/characters/   Sprites de la tripulación (frente/espalda)
-  styles/              tokens.css + index.css
+  domain/
+    content/   Datos estáticos: crew, missions, events, sectors, ship, conditions
+    model/     Esquemas Zod + tipos: stats, game (estado persistible, v2)
+    rules/     stats (rangos, límites), availability (+ advertencias), chance, drift (desgaste por hora), alerts, recovery
+    engine/    createGame, tick (advanceHours), commands (assignTask, orderCrew, preview), resolve, spawn, composition, state, random
+  persistence/ saveGame: localStorage, sobre versionado, validación, respaldo y migraciones
+  store/       gameStore (Zustand): tiempo real → horas de juego, llama al motor y guarda
+  ui/
+    console/   ConsoleView (Puente), ShipMap (plano + caminantes), TaskList, AssignDialog
+    ship/      layout.ts: plano lógico (salas, puertas, pasillo, camas). Lo comparten el generador y el mapa
+    views/     Tripulación, ficha, Misiones, Historial, Sectores, Sistema
+  assets/      characters/ (hojas originales + pixel/ 16×16), ship/elysium-deck.png
+scripts/       generate-ship-map.ts (PNG sin dependencias), extract-crew-sprites.py
 ```
 
-## Flujo de una misión
+## Flujo
 
-1. `MissionBriefingView` mantiene la selección (estado transitorio) y llama a `analyzeTeam(state, order)` para la vista previa.
-2. Al confirmar, `gameStore.launchMission(order)` llama a `resolveMission(state, order, { now })`.
-3. `resolveMission` reutiliza `analyzeTeam`, así que la vista previa y el resultado no pueden divergir:
-   valida la misión, la ruta y el equipo (1–3, sin duplicados, conocidos, disponibles), suma las
-   consecuencias (base + efectos de equipo + cada penalización activada **una vez**), elige objetivos
-   aleatorios con el PRNG de la partida, limita cada estadística **una vez** a sus límites (0–100, o
-   más estrechos por estados permanentes), y devuelve un **estado nuevo** más una entrada de historial.
-   La entrada original nunca se modifica (lo comprueba una prueba con objetos congelados).
-4. El store publica el estado, lo guarda y la vista navega a `/log/:id`.
-
-Las alertas, la disponibilidad y los rangos se **derivan** del estado; no se guardan, así no se
-desincronizan. Los datos estáticos de personajes y misiones tampoco se guardan: la partida solo
-almacena lo que cambia (estadísticas, estados activos, estado de misiones, historial, semilla, ajustes).
+- **Reloj.** `AppShell` llama a `store.tick(ms)` cada 100 ms. El store acumula el tiempo real × velocidad y, por cada 2 s, llama a `advanceHours(state, n)`. Si un aviso pide pausa (decisión urgente, fallo, muerte…), el store se detiene en esa hora.
+- **Hora de juego** (`tick.ts`): desgaste por actividad → mantenimiento de la nave → estado y horario de cada tripulante (colapso, enfermería, muerte, dormir a las 22:00) → terminar tareas activas / vencer tareas ignoradas → efectos diarios → aparición de misiones, eventos y solicitudes → fin de partida.
+- **Decisiones.** `previewAssignment` calcula errores, probabilidad, advertencias y composición, y `assignTask` reutiliza ese mismo cálculo, así que lo que ve el jugador es lo que se aplica. La probabilidad y el riesgo principal se guardan al asignar; la tirada se hace al terminar.
+- **Inmutabilidad.** Cada función pública del motor hace `structuredClone` y trabaja sobre la copia. Una prueba con objetos congelados lo verifica.
+- **Aleatoriedad.** `mulberry32` con la semilla en el estado: misma partida, mismos resultados.
+- **Mapa.** La UI deduce el destino de cada tripulante a partir de su actividad (cama, enfermería, sector de la tarea, hangar, su puesto) y lo hace caminar por puertas y pasillo. Las posiciones viven en refs y se escriben al DOM en cada frame, sin re-renderizar React.
 
 ## Persistencia
 
-`localStorage`, clave `elysium.save`. Motivos: una partida ocupa pocos KB, la lectura síncrona
-restaura el juego antes del primer render (sin parpadeo) y no requiere dependencias. IndexedDB solo
-compensaría con datos grandes o binarios.
-
-- Sobre `{ app: 'elysium', version, savedAt, state }`; el estado se valida con `gameStateSchema` al guardar y al cargar.
-- Guardado automático después de cada operación que cambia la partida (misión, reinicio, importación, ajustes).
-- Partida dañada o incompatible: se copia el texto original en `elysium.save.backup`, se inicia una partida nueva y se avisa.
-- Versión más reciente que la app: se rechaza. Versiones antiguas: tabla `MIGRATIONS` en `saveGame.ts`.
-- Si el almacenamiento falla (cuota, modo privado), se sigue jugando en memoria y se avisa.
-- Exportar/importar JSON con la misma validación.
-
-## Aleatoriedad
-
-`mulberry32`, con la semilla guardada en `state.rngSeed`. Cada sorteo avanza la semilla, así que un
-mismo guardado produce siempre el mismo resultado. Se descartó un LCG simple: su primer valor casi
-no cambia entre semillas cercanas (una prueba lo detectó).
+`localStorage` (`elysium.save`) con el sobre `{ app, version: 2, savedAt, state }`, validado con Zod al guardar y al cargar. Se guarda en cada hora de juego y en cada decisión. Una partida dañada o de una versión anterior (v1 del prototipo previo) se copia a `elysium.save.backup` y empieza una nueva con aviso. El juego siempre carga en pausa. También se puede exportar e importar en JSON.
 
 ## Extender
 
-- **Nueva misión:** añadir un `MissionDefinition` en `content/missions.ts` con `implemented: true`. Efectos soportados: `stats` (participantes o toda la tripulación) y `random-participant`. Los efectos `unsupported` documentan lo que aún falta (recursos, modificadores futuros).
-- **Rutas:** `routes[]` (la misión 5 ya está modelada así; la UI muestra un selector cuando hay varias).
-- **Estados permanentes:** catálogo en `content/conditions.ts`; los límites numéricos (`bounds`) ya se aplican al hacer clamp. Faltan los disparadores.
-- **Recursos:** `state.resources` está reservado y validado; el diseño aún no define valores.
-- **Sectores:** `SectorView` tiene puntos de extensión (`MONITORED`, `LINKS`).
+- **Evento nuevo:** añadir un `EventDefinition` en `content/events.ts` (opciones, especialidad, probabilidad base, coste, éxito, fallo, vencimiento). Aparece solo según su peso, día mínimo y enfriamiento.
+- **Misión nueva:** `content/missions.ts`, indicando su día.
+- **Estado permanente con efecto:** añadir el desencadenante en `tick.ts` o `commands.ts`, y el multiplicador en `drift.ts`.
+- **Sala o mueble:** editar `ui/ship/layout.ts` y regenerar el PNG.
 
 ## Pruebas
 
-- `tests/domain`: motor (estado inicial, validaciones, equipo óptimo, sin Lyra, sin Zara, sin Orion, combinaciones, límites 0–100, límites por estados, historial, inmutabilidad, reproducibilidad).
-- `tests/persistence`: ida y vuelta, partidas dañadas o incompatibles, recarga, reinicio, exportar/importar, fallo de almacenamiento.
-- `tests/ui`: selección (máximo 3, incapacitados bloqueados, advertencias), lanzamiento con confirmación, informe, reinicio.
-- `tests/browser`: bucle completo en Chromium real con recarga y reinicio, sin errores de consola.
+- `tests/domain/engine.test.ts`: reglas de desgaste, reloj, horario, misiones, vencimientos, victoria y derrota, probabilidad, advertencias, Rencor, solicitudes, órdenes directas e inmutabilidad.
+- `tests/domain/balance.test.ts`: partidas completas con una estrategia pasiva y otra competente.
+- `tests/persistence`: guardado, tiempo real → horas, recarga, reinicio, partidas dañadas o v1, exportar/importar, fallo de almacenamiento.
+- `tests/ui/console.test.tsx`: Puente, diálogo de decisión, "Mandar de igual forma", misiones (máximo 3), solicitudes, órdenes, reloj y vistas.
+- `tests/browser/elysium.spec.ts`: Chromium real con decisión, tiempo corriendo, recarga y reinicio, sin errores de consola.

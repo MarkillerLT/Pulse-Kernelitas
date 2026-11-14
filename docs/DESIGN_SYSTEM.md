@@ -25,11 +25,9 @@ Los indicadores de estadística son barras de 10 segmentos coloreadas según los
 DM Mono para toda la interfaz (etiquetas, números, terminal) y Public Sans para párrafos largos.
 Ambas son autoalojadas con Fontsource (licencias en `public/licenses/`).
 
-## Sprites
+## Sprites y nave
 
-`src/assets/characters/*.jpeg`: 1248×624, vista frontal y trasera, personaje en la mitad izquierda
-sobre negro. Se recortan con CSS (`.sprite`, `image-rendering: pixelated`) dentro de un marco negro
-tipo monitor. La correspondencia color → personaje está solo en `src/ui/sprites.ts`:
+- **Tripulación:** `src/assets/characters/*.jpeg` son las hojas originales (1248×624, una cuadrícula de 16×16 celdas de 39 px sobre negro). `scripts/extract-crew-sprites.py` toma el centro de cada celda y genera `pixel/*.png` de 16×16 con transparencia. Todo el juego usa esos PNG con `image-rendering: pixelated`. La correspondencia color → personaje está en `src/ui/sprites.ts`:
 
 | Sprite     | Personaje   |
 | ---------- | ----------- |
@@ -39,9 +37,10 @@ tipo monitor. La correspondencia color → personaje está solo en `src/ui/sprit
 | AzulOscuro | Zara Void   |
 | Verde      | Kai Verdant |
 
-La vista trasera se usa en los puestos del equipo (tripulantes "partiendo" a la misión) y en la ficha.
+- **Nave:** plano cenital de 400×224 px lógicos, generado por `scripts/generate-ship-map.ts` a partir de `src/ui/ship/layout.ts`: ingeniería con el reactor, invernadero, núcleo de N0VA-7, hangar con la cápsula, soporte vital, hábitat con literas, centro médico y puente en la proa. Se escala por múltiplos de 0,5 (y de forma proporcional en móvil). Los nombres de las salas son HTML, no están dentro del PNG.
+- **Caminantes:** de frente al bajar y de espaldas al subir, con un pequeño rebote al caminar. Encima llevan una marca de estado: `z` dormido, `+` en enfermería y `!` con advertencia.
 
 ## Movimiento
 
-Discreto: cursor parpadeante, líneas de la secuencia de misión y transiciones de borde. Se desactiva
-con `prefers-reduced-motion` o con la opción "Reducir animaciones" de Sistema (persistida).
+Discreto: caminantes, salas en alarma, cursor parpadeante. Con `prefers-reduced-motion` o con la opción
+"Reducir animaciones" de Sistema (que se guarda), los tripulantes aparecen directamente en su destino.

@@ -1,48 +1,58 @@
 import type { CrewId } from './crew'
 import type { SectorId } from './sectors'
+import type { ShipDelta, ShipKey } from './ship'
 import type { StatDelta } from '../model/stats'
 
 /**
- * Mission definitions (design doc §8–9).
+ * Story missions (design doc §8–9). Each one appears as a task on a fixed day of the journey.
  *
- * Every mission has one or more routes. A normal mission has a single route; mission 5 lets the
- * player choose a route. Each route defines the optimal crew, per-character base consequences,
- * team-wide effects and penalties triggered by the absence of an optimal member.
+ * A route defines the optimal crew, per-character base consequences, team effects and
+ * penalties for each absent optimal member. Consequences are applied whether the mission
+ * succeeds or fails (the team went through it); the reward only arrives on success.
  *
- * Only missions with `implemented: true` can be resolved by the engine. The others are kept as
- * data so the architecture is exercised and their design stays documented.
+ * Interpretations of the design text are listed in docs/GAME_DESIGN.md.
  */
 export const MAX_TEAM_SIZE = 3
 
 export type EffectScope = 'participants' | 'crew'
 
 export type MissionEffect =
-  /** A stat change applied once to every member of the scope. */
-  | { kind: 'stats'; scope: EffectScope; delta: StatDelta; note?: string }
-  /** A stat change applied once to one participant chosen with the game's seeded PRNG. */
+  /** Stat change applied once to every member of the scope. */
+  | { kind: 'stats'; scope: EffectScope; delta: StatDelta }
+  /** Stat change applied once to one participant chosen with the game's seeded PRNG. */
   | { kind: 'random-participant'; delta: StatDelta }
-  /** A consequence the engine cannot apply yet (resources, future modifiers…). */
-  | { kind: 'unsupported'; text: string }
+  /** Ship system change. */
+  | { kind: 'ship'; delta: ShipDelta }
+  /** Ship system scaled by a factor (e.g. "Alimentos -50%" → food × 0.5). */
+  | { kind: 'ship-scale'; key: ShipKey; factor: number }
+  /** Persistent modifier: every future recovery is multiplied by `factor`. */
+  | { kind: 'recovery-modifier'; factor: number }
+
+export interface MissionReward {
+  text: string
+  ship?: ShipDelta
+  /** Applied to the whole crew. */
+  crew?: StatDelta
+}
 
 export interface AbsenceRule {
-  /** Optimal member whose absence triggers the rule. */
   crewId: CrewId
-  /** Narrative explanation from the design document. */
   summary: string
   effects: MissionEffect[]
+  /** Scales the numeric reward (e.g. "Combustible obtenido -50%" → 0.5). */
+  rewardMultiplier?: number
+  /** Replaces the reward entirely (e.g. "Moral +5 solamente"). */
+  rewardOverride?: MissionReward
 }
 
 export interface MissionRoute {
   id: string
   name: string
   optimalCrew: CrewId[]
-  /** Consequences for each optimal member who takes part. */
   baseEffects: Partial<Record<CrewId, StatDelta>>
-  /** Consequences for the whole team or crew, independent of composition. */
   teamEffects: MissionEffect[]
   absenceRules: AbsenceRule[]
-  /** Outcome text when every optimal member takes part. */
-  optimalReward: string
+  reward: MissionReward
 }
 
 export interface MissionDefinition {
@@ -50,28 +60,29 @@ export interface MissionDefinition {
   number: number
   title: string
   sectorId: SectorId
-  objective?: string
-  briefing?: string
+  /** Journey day on which the mission becomes available (at 09:00). */
+  day: number
+  /** Hours the team is away. */
+  durationHours: number
+  objective: string
+  briefing: string
   risks: string[]
+  /** Damage the ship takes during the mission no matter what (mission 5 storm). */
+  impact?: ShipDelta
   routes: MissionRoute[]
-  /** Narrative lines shown during the resolution sequence. */
-  sequence?: string[]
-  implemented: boolean
-  /** Ambiguities or missing information found in the design document. */
-  designNotes?: string[]
+  sequence: string[]
 }
-
-const AMBIGUOUS_ALL =
-  'El documento dice "todos" sin aclarar si son los participantes o toda la tripulación.'
 
 const ghostSatellite: MissionDefinition = {
   id: 'ghost-satellite',
   number: 1,
   title: 'El Satélite Fantasma',
   sectorId: 'aldrin',
+  day: 2,
+  durationHours: 6,
   objective: 'Investigar un satélite abandonado para recuperar información.',
   briefing:
-    'Los sensores exteriores del Sector Aldrin detectan un satélite sin firma de propulsión en una órbita estable. Sus sistemas siguen alimentados. N0VA-7 recomienda una incursión breve con una cápsula de exploración para extraer sus registros.',
+    'Los sensores exteriores del Sector Aldrin detectan un satélite sin firma de propulsión en una órbita estable. Sus sistemas siguen alimentados. N0VA-7 recomienda una incursión breve para extraer sus registros.',
   risks: ['Sistemas bloqueados.', 'Trampas automáticas.', 'Radiación.'],
   routes: [
     {
@@ -101,21 +112,17 @@ const ghostSatellite: MissionDefinition = {
           effects: [{ kind: 'stats', scope: 'participants', delta: { stress: 10, trust: -5 } }],
         },
       ],
-      optimalReward: 'Se obtiene toda la información.',
+      reward: {
+        text: 'Se obtiene toda la información: mapas de navegación y componentes recuperados.',
+        ship: { power: 10 },
+      },
     },
   ],
   sequence: [
     'Cápsula de exploración desacoplada del hangar Aldrin.',
-    'Aproximación al satélite. Niveles de radiación por encima de lo nominal.',
+    'Aproximación al satélite. Radiación por encima de lo nominal.',
     'Acoplamiento completado. Sistemas internos bloqueados.',
-    'Equipo dentro del casco. Se detectan mecanismos de defensa automáticos.',
-    'Extracción de registros en curso.',
-    'Retorno a la Elysium.',
-  ],
-  implemented: true,
-  designNotes: [
-    'Los tripulantes que no forman parte del equipo óptimo no tienen consecuencias base definidas; solo reciben las penalizaciones por ausencia que afectan a los participantes.',
-    'El documento no define qué información se recupera sin el equipo óptimo.',
+    'Mecanismos de defensa automáticos detectados.',
   ],
 }
 
@@ -124,6 +131,11 @@ const orchardOutbreak: MissionDefinition = {
   number: 2,
   title: 'Brote en los Huertos',
   sectorId: 'tereshkova',
+  day: 7,
+  durationHours: 8,
+  objective: 'Contener un patógeno que se propaga por los cultivos del invernadero.',
+  briefing:
+    'Las cámaras de cultivo del Invernadero Tereshkova muestran manchas necróticas que avanzan entre bandejas. Si el brote no se contiene, las reservas de alimento no alcanzarán para el viaje.',
   risks: ['Infección.', 'Escasez de alimentos.', 'Agotamiento.'],
   routes: [
     {
@@ -140,15 +152,13 @@ const orchardOutbreak: MissionDefinition = {
         {
           crewId: 'kai',
           summary: 'Producción de alimentos -40%. Moral -10 para todos.',
-          effects: [
-            { kind: 'unsupported', text: 'Producción de alimentos -40%.' },
-            { kind: 'stats', scope: 'crew', delta: { morale: -10 }, note: AMBIGUOUS_ALL },
-          ],
+          effects: [{ kind: 'stats', scope: 'crew', delta: { morale: -10 } }],
+          rewardMultiplier: 0.6,
         },
         {
           crewId: 'elias',
           summary: 'Todos pierden 10 Salud.',
-          effects: [{ kind: 'stats', scope: 'crew', delta: { health: -10 }, note: AMBIGUOUS_ALL }],
+          effects: [{ kind: 'stats', scope: 'participants', delta: { health: -10 } }],
         },
         {
           crewId: 'lyra',
@@ -156,11 +166,17 @@ const orchardOutbreak: MissionDefinition = {
           effects: [{ kind: 'stats', scope: 'participants', delta: { stress: 15, sleep: -15 } }],
         },
       ],
-      optimalReward: 'Brote contenido.',
+      reward: {
+        text: 'Brote contenido. La producción de alimentos se recupera.',
+        ship: { food: 25 },
+      },
     },
   ],
-  implemented: false,
-  designNotes: ['Objetivo y recompensa no definidos.', AMBIGUOUS_ALL],
+  sequence: [
+    'Equipo con trajes de aislamiento en la esclusa del invernadero.',
+    'Muestras tomadas. El patógeno resiste los fungicidas estándar.',
+    'Cuarentena de las bandejas infectadas.',
+  ],
 }
 
 const asteroidField: MissionDefinition = {
@@ -168,6 +184,12 @@ const asteroidField: MissionDefinition = {
   number: 3,
   title: 'Campo de Asteroides',
   sectorId: 'armstrong',
+  day: 13,
+  durationHours: 6,
+  objective:
+    'Atravesar un campo de asteroides y extraer combustible de un fragmento rico en hielo.',
+  briefing:
+    'La ruta más corta cruza un campo denso. Uno de los fragmentos contiene hielo utilizable como combustible. La navegación requiere precisión y reflejos.',
   risks: ['Impactos.', 'Navegación compleja.', 'Poco tiempo.'],
   routes: [
     {
@@ -194,15 +216,18 @@ const asteroidField: MissionDefinition = {
         {
           crewId: 'lyra',
           summary: 'Combustible obtenido -50%.',
-          effects: [{ kind: 'unsupported', text: 'Combustible obtenido -50%.' }],
+          effects: [],
+          rewardMultiplier: 0.5,
         },
       ],
-      optimalReward: 'Combustible obtenido.',
+      reward: { text: 'Combustible extraído del fragmento de hielo.', ship: { power: 30 } },
     },
   ],
-  implemented: false,
-  designNotes: [
-    'Objetivo no definido. La cantidad de combustible depende de recursos aún no modelados.',
+  impact: { hull: -5 },
+  sequence: [
+    'Motores al 40%. Entrada en el campo de asteroides.',
+    'Impactos menores en el blindaje frontal.',
+    'Fragmento de hielo localizado. Iniciando extracción.',
   ],
 }
 
@@ -211,6 +236,11 @@ const distressSignal: MissionDefinition = {
   number: 4,
   title: 'La Señal de Auxilio',
   sectorId: 'armstrong',
+  day: 19,
+  durationHours: 8,
+  objective: 'Responder a una señal de auxilio de una nave a la deriva.',
+  briefing:
+    'Comunicaciones recibe una señal de auxilio en bucle desde una nave sin propulsión. Puede haber supervivientes, o puede ser una trampa.',
   risks: ['Emboscadas.', 'Consumo de recursos.', 'Tiempo perdido.'],
   routes: [
     {
@@ -222,14 +252,7 @@ const distressSignal: MissionDefinition = {
         elias: { health: -15, stress: 20, sleep: -15 },
         zara: { health: -15, stress: 10, sleep: -20 },
       },
-      teamEffects: [
-        {
-          kind: 'stats',
-          scope: 'crew',
-          delta: { morale: 15, trust: 20 },
-          note: 'Resultado global.',
-        },
-      ],
+      teamEffects: [{ kind: 'ship', delta: { medicine: -10, food: -5 } }],
       absenceRules: [
         {
           crewId: 'elias',
@@ -239,12 +262,11 @@ const distressSignal: MissionDefinition = {
         {
           crewId: 'orion',
           summary: 'Moral +5 solamente.',
-          effects: [
-            {
-              kind: 'unsupported',
-              text: 'El resultado global se reduce a Moral +5 (sustituye al resultado global).',
-            },
-          ],
+          effects: [],
+          rewardOverride: {
+            text: 'Rescate desordenado. La tripulación apenas lo celebra.',
+            crew: { morale: 5 },
+          },
         },
         {
           crewId: 'zara',
@@ -252,13 +274,16 @@ const distressSignal: MissionDefinition = {
           effects: [{ kind: 'stats', scope: 'participants', delta: { sleep: -20 } }],
         },
       ],
-      optimalReward: 'Moral +15 y Confianza +20.',
+      reward: {
+        text: 'Supervivientes rescatados. La tripulación confía en N0VA-7.',
+        crew: { morale: 15, trust: 20 },
+      },
     },
   ],
-  implemented: false,
-  designNotes: [
-    'No se aclara si el resultado global afecta a toda la tripulación o solo al equipo.',
-    'La penalización sin Orion sustituye un efecto; el motor necesita reglas de sustitución.',
+  sequence: [
+    'Rumbo de intercepción fijado.',
+    'Acoplamiento con la nave a la deriva. Pasillos sin presión.',
+    'Señales de vida detectadas en la bodega.',
   ],
 }
 
@@ -267,21 +292,20 @@ const stormHeart: MissionDefinition = {
   number: 5,
   title: 'El Corazón de la Tormenta',
   sectorId: 'gagarin',
+  day: 25,
+  durationHours: 6,
+  objective: 'Sobrevivir a una tormenta iónica eligiendo qué sistema proteger.',
+  briefing:
+    'Una tormenta iónica envuelve a la Elysium. No hay equipo correcto: N0VA-7 solo puede concentrar a la tripulación en un sector. El resto sufrirá daños.',
   risks: ['No existe un equipo correcto. El jugador elige una ruta.'],
+  impact: { power: -20, food: -15, medicine: -15, hull: -10 },
   routes: [
     {
       id: 'engine',
       name: 'Ruta Motor',
       optimalCrew: ['orion', 'lyra'],
       baseEffects: {},
-      teamEffects: [
-        {
-          kind: 'stats',
-          scope: 'participants',
-          delta: { stress: 15, sleep: -20 },
-          note: 'Daño mínimo.',
-        },
-      ],
+      teamEffects: [{ kind: 'stats', scope: 'participants', delta: { stress: 15, sleep: -20 } }],
       absenceRules: [
         {
           crewId: 'lyra',
@@ -294,7 +318,7 @@ const stormHeart: MissionDefinition = {
           effects: [{ kind: 'stats', scope: 'participants', delta: { trust: -10, stress: 15 } }],
         },
       ],
-      optimalReward: 'Daño mínimo.',
+      reward: { text: 'Motor protegido: daño mínimo.', ship: { power: 20, hull: 10 } },
     },
     {
       id: 'orchards',
@@ -307,12 +331,12 @@ const stormHeart: MissionDefinition = {
           crewId: 'kai',
           summary: 'Alimentos -50%. Moral -15 para todos.',
           effects: [
-            { kind: 'unsupported', text: 'Alimentos -50%.' },
-            { kind: 'stats', scope: 'crew', delta: { morale: -15 }, note: AMBIGUOUS_ALL },
+            { kind: 'ship-scale', key: 'food', factor: 0.5 },
+            { kind: 'stats', scope: 'crew', delta: { morale: -15 } },
           ],
         },
       ],
-      optimalReward: 'Cultivos protegidos.',
+      reward: { text: 'Cultivos protegidos.', ship: { food: 15 } },
     },
     {
       id: 'infirmary',
@@ -324,16 +348,16 @@ const stormHeart: MissionDefinition = {
         {
           crewId: 'elias',
           summary: 'Toda recuperación futura -50%.',
-          effects: [{ kind: 'unsupported', text: 'Toda recuperación futura -50%.' }],
+          effects: [{ kind: 'recovery-modifier', factor: 0.5 }],
         },
       ],
-      optimalReward: 'Enfermería protegida.',
+      reward: { text: 'Enfermería protegida.', ship: { medicine: 15 } },
     },
   ],
-  implemented: false,
-  designNotes: [
-    'No se especifica si los efectos de cada ruta se aplican a cada participante o al grupo.',
-    'Las rutas Motor/Huertos/Enfermería no definen objetivo ni recompensa concreta.',
+  sequence: [
+    'Tormenta iónica a 3 minutos. Redistribuyendo energía.',
+    'Descargas en el casco. Sistemas secundarios en riesgo.',
+    'Equipo en posición. Resistiendo el pico de la tormenta.',
   ],
 }
 

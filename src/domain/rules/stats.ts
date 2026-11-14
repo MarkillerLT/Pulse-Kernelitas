@@ -61,7 +61,8 @@ const STRESS: Band[] = [
   { min: 0, label: 'Tranquilo', level: 'good' },
 ]
 
-export function readStat(key: StatKey, value: number): StatReading {
+export function readStat(key: StatKey, raw: number): StatReading {
+  const value = Math.round(raw)
   const bands = key === 'stress' ? STRESS : HIGH_IS_GOOD[key]
   const band = bands.find((b) => value >= b.min) ?? bands[bands.length - 1]
   return { label: band.label, level: band.level }
@@ -93,8 +94,9 @@ export function getStatBounds(conditionIds: readonly string[]): StatBounds {
   return bounds
 }
 
+/** Keeps a value inside [min, max], rounded to 2 decimals to avoid float noise. */
 export function clamp(value: number, min = STAT_MIN, max = STAT_MAX): number {
-  return Math.min(max, Math.max(min, Math.round(value)))
+  return Math.round(Math.min(max, Math.max(min, value)) * 100) / 100
 }
 
 /** Returns new stats with the delta applied and every value kept inside its bounds. Pure. */
