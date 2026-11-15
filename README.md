@@ -34,14 +34,15 @@ Para Playwright con un Chromium del sistema:
 
 Eres N0VA-7. No controlas a los astronautas: decides qué hacen.
 
-1. **Puente** (`/`): reloj de la nave, sistemas (soporte vital, energía, casco, comida y medicinas), plano de la Elysium con la tripulación caminando, lista de tareas y estado de cada tripulante.
-2. El tiempo arranca en **pausa**. Usa 1×, 2× o 4× (o la barra espaciadora). Cada hora las estadísticas cambian según lo que hace cada tripulante; de noche duermen solos.
+1. **Una sola pantalla** (`/juego/`): arriba el reloj, la velocidad y el botón de pausa; debajo los sistemas de la nave, el plano de la Elysium con la tripulación caminando y un panel lateral con pestañas (**Tareas, Tripulación, Misiones, Sectores, Registro**). Cambiar de pestaña no cambia la vista.
+2. El juego abre en el **menú de pausa** (guía rápida, dificultad y ajustes). Al reanudar, el tiempo **siempre corre** (1 hora = 8 s a 1×, en cuartos de hora) y nada lo pausa solo: únicamente ese menú (botón Pausa o `Esc`). La velocidad **Auto** (predeterminada) va a 1× mientras haya tareas pendientes o en curso y a 4× en los tiempos muertos; si eliges 1×, 2× o 4× a mano, se respeta hasta que vuelvas a pulsar Auto.
+   Pulsa a un astronauta y sus estadísticas aparecen en una ficha flotante que lo sigue por la nave.
 3. Surgen **tareas** ("El motor se incendia", "Plaga en los cultivos", solicitudes de descanso…). Elige una opción, selecciona a quién mandas y revisa la **probabilidad de éxito** y sus causas.
 4. Si alguien está saturado o agotado verás "Advertencia: niveles de estrés altos". Puedes **Mandar de igual forma**, pero pierde confianza (y tras tres veces le queda Rencor).
 5. Los fallos explican su causa y permiten **reintentar**. Las tareas ignoradas tienen consecuencias.
 6. Las 5 **misiones** del documento aparecen en los días 2, 7, 13, 19 y 25. El equipo óptimo da un 75 % de éxito y cada ausencia lo reduce.
 7. También puedes dar órdenes directas: Descansar, Tiempo libre, Enfermería o Volver al puesto.
-8. Ganas si llegas al día 31. Pierdes si el soporte vital o el casco llegan a 0, o si muere toda la tripulación. La partida se guarda sola.
+8. No hay final: sobrevive lo más lejos posible. El viaje termina si el soporte vital o el casco llegan a 0, o si muere toda la tripulación. La partida se guarda sola.
 
 ## Documentación
 

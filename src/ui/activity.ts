@@ -11,8 +11,9 @@ export const ACTIVITY_LABELS: Record<Activity, string> = {
   dead: 'Fallecido',
 }
 
-export function formatClock(hour: number): string {
-  return `Día ${dayOf(hour)} · ${String(hourOfDay(hour)).padStart(2, '0')}:00`
+/** `minutes` shows the quarter hour in progress (the engine itself works in whole hours). */
+export function formatClock(hour: number, minutes = 0): string {
+  return `Día ${dayOf(hour)} · ${String(hourOfDay(hour)).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`
 }
 
 export function formatDayProgress(hour: number): string {

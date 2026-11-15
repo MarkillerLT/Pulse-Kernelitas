@@ -1,13 +1,13 @@
 # Diseño de juego — RPG de decisiones
 
-N0VA-7 supervisa un viaje **sin final**: el objetivo es sobrevivir lo más lejos posible. El tiempo corre en tiempo real (1 hora de juego = 2 s a 1×)
-y se pausa solo cuando hace falta decidir. El jugador no mueve a los astronautas: decide qué hacen,
+N0VA-7 supervisa un viaje **sin final**: el objetivo es sobrevivir lo más lejos posible. El tiempo corre en tiempo real (1 hora de juego = 8 s a 1×; el reloj muestra cuartos de hora). La velocidad Auto va a 1× mientras haya tareas pendientes o en curso y a 4× el resto del tiempo; elegir una velocidad a mano la fija (modo manual)
+y nunca se pausa sola: solo el menú de pausa detiene el reloj. El jugador no mueve a los astronautas: decide qué hacen,
 y ellos caminan solos por la nave hacia su sector.
 
 ## Bucle
 
 1. Vigilar: sistemas de la nave siempre visibles; las estadísticas de un tripulante solo al pulsarlo.
-2. Surgen tareas con plazo (eventos, solicitudes y misiones). Las críticas y urgentes pausan el juego.
+2. Surgen tareas con plazo (eventos, solicitudes y misiones). El reloj sigue corriendo mientras decides.
 3. Decidir: opción + equipo. Se muestra la probabilidad de éxito con su desglose.
 4. Advertencias: Estrés ≥ 76, Sueño ≤ 24 o Salud ≤ 24 → "Mandar de igual forma" (Confianza −5).
 5. Resultado al terminar la tarea: éxito o fallo con su causa principal; muchos fallos permiten reintentar.
@@ -84,11 +84,11 @@ Fácil ≈ días 13–20 (nivel 8–14), Medio ≈ días 11–14, Difícil ≈ d
 El nivel sube cada **36 horas de juego** (no depende de la velocidad del reloj). El modo elegido al
 empezar fija el nivel inicial; la fase del nivel actual decide cuánta ayuda da N0VA-7.
 
-| Modo / fase | Niveles | Nivel inicial | Ayuda |
-| --- | --- | --- | --- |
-| Fácil (inicial) | 1–4 | 1 | Recomienda el equipo óptimo en todas las tareas |
-| Medio (intermedio) | 5–9 | 5 | Solo en tareas críticas y misiones (las de más desgaste) |
-| Difícil (avanzado) | 10+ | 10 | Solo la probabilidad; sin equipo óptimo ni penalizaciones por ausencia |
+| Modo / fase        | Niveles | Nivel inicial | Ayuda                                                                  |
+| ------------------ | ------- | ------------- | ---------------------------------------------------------------------- |
+| Fácil (inicial)    | 1–4     | 1             | Recomienda el equipo óptimo en todas las tareas                        |
+| Medio (intermedio) | 5–9     | 5             | Solo en tareas críticas y misiones (las de más desgaste)               |
+| Difícil (avanzado) | 10+     | 10            | Solo la probabilidad; sin equipo óptimo ni penalizaciones por ausencia |
 
 Cada nivel (s = nivel − 1), definido en `src/domain/rules/difficulty.ts`:
 

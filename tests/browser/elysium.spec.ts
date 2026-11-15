@@ -8,12 +8,15 @@ test('decision loop runs in real time, survives a reload and can be reset', asyn
   await page.goto('/juego/')
   await page.evaluate(() => localStorage.clear())
   await page.reload()
-  // First launch: pick the difficulty.
-  const picker = page.getByRole('dialog', { name: 'Elige la dificultad' })
-  await picker.getByRole('radio', { name: /Fácil/ }).click()
-  await picker.getByRole('button', { name: /Comenzar en modo Fácil/ }).click()
+  // First launch: the pause menu opens on the express guide; pick the difficulty.
+  const menu = page.getByRole('dialog')
+  await expect(menu.getByText('Eres N0VA-7')).toBeVisible()
+  await menu.getByRole('button', { name: /Elegir dificultad/ }).click()
+  await menu.getByRole('radio', { name: /Fácil/ }).click()
+  await menu.getByRole('button', { name: /Comenzar en modo Fácil/ }).click()
   await expect(page.locator('.level-value')).toHaveText('Nivel 1')
-  await expect(page.locator('.clock-time')).toHaveText('Día 1 · 08:00')
+  // Time runs on its own from the start.
+  await expect(page.locator('.clock-state')).toHaveText(/En curso/)
   await expect(page.getByRole('img', { name: /Plano de la nave Elysium/ })).toBeVisible()
   await expect(page.locator('.walker')).toHaveCount(5)
 
@@ -23,7 +26,7 @@ test('decision loop runs in real time, survives a reload and can be reset', asyn
   await dialog.getByRole('button', { name: 'Asignar a Lyra Kess' }).click()
   await expect(dialog.getByText('95%')).toBeVisible()
   await dialog.getByRole('button', { name: 'Enviar ahora' }).click()
-  await expect(page.getByText('En curso')).toBeVisible()
+  await expect(page.locator('.task-card.is-active')).toBeVisible()
 
   // Let time run until the task resolves.
   await page.getByRole('button', { name: '4×' }).click()
@@ -31,22 +34,31 @@ test('decision loop runs in real time, survives a reload and can be reset', asyn
     /(Completada|Fallida): Filtros de aire saturados/,
     { timeout: 10_000 },
   )
-  await page.getByRole('button', { name: /Pausa/ }).click()
+  // Only the pause menu stops the clock.
+  await page.getByRole('button', { name: 'Pausa' }).click()
+  await expect(page.locator('.clock-state')).toHaveText(/En pausa/)
   const clock = await page.locator('.clock-time').textContent()
-
-  // Reload: same clock, same history, paused.
-  await page.reload()
+  await page.waitForTimeout(2500)
   await expect(page.locator('.clock-time')).toHaveText(clock!)
-  await expect(page.locator('.recent-log')).toContainText(/Filtros de aire saturados/)
-  await expect(page.getByRole('button', { name: /Pausa/ })).toHaveAttribute('aria-pressed', 'true')
 
-  // Reset.
-  await page.goto('/juego/system')
-  await page.getByRole('button', { name: /Nueva partida/ }).click()
+  // Reload: same history; the game opens on the pause menu and resumes from it.
+  await page.reload()
+  await expect(page.locator('.clock-state')).toHaveText(/En pausa/)
+  await page.getByRole('button', { name: /Reanudar/ }).click()
+  await expect(page.locator('.recent-log')).toContainText(/Filtros de aire saturados/)
+  await expect(page.locator('.clock-state')).toHaveText(/En curso/)
+
+  // Floating crew card and side tabs.
+  await page.getByRole('button', { name: 'Seleccionar a Kai Verdant' }).click()
+  await expect(page.getByRole('group', { name: 'Ficha de Kai Verdant' })).toBeVisible()
+  await page.getByRole('tab', { name: 'Misiones' }).click()
+  await expect(page.getByText('El Corazón de la Tormenta')).toBeVisible()
+
+  // Reset from the pause menu (Esc opens it).
+  await page.keyboard.press('Escape')
+  await page.getByRole('tab', { name: 'Dificultad' }).click()
   await page.getByRole('radio', { name: /Difícil/ }).click()
   await page.getByRole('button', { name: /Comenzar en modo Difícil/ }).click()
-  await page.goto('/juego/')
-  await expect(page.locator('.clock-time')).toHaveText('Día 1 · 08:00')
   await expect(page.locator('.level-value')).toHaveText('Nivel 10')
 
   expect(errors).toEqual([])

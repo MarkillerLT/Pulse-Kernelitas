@@ -1,32 +1,26 @@
 import { useState } from 'react'
-import { SHIP_KEYS, SHIP_LABELS } from '../../domain/content/ship'
-import type { LogEntry } from '../../domain/model/game'
-import { useGame } from '../../store/gameStore'
-import { ChangeTable } from '../components/ChangeTable'
-import { CrewSprite } from '../components/CrewSprite'
-import { PageHeader } from '../components/PageHeader'
-import { formatClock } from '../activity'
-import { formatDelta } from '../format'
+import { SHIP_KEYS, SHIP_LABELS } from '../../../domain/content/ship'
+import type { LogEntry } from '../../../domain/model/game'
+import { ChangeTable } from '../../components/ChangeTable'
+import { CrewSprite } from '../../components/CrewSprite'
+import { formatClock } from '../../activity'
+import { formatDelta } from '../../format'
 
 const FILTERS: { id: string; label: string; match: (e: LogEntry) => boolean }[] = [
   { id: 'all', label: 'Todo', match: () => true },
   { id: 'decisions', label: 'Decisiones', match: (e) => e.kind === 'task' || e.kind === 'request' },
   { id: 'missions', label: 'Misiones', match: (e) => e.kind === 'mission' },
   { id: 'crew', label: 'Tripulación', match: (e) => e.kind === 'crew' },
-  { id: 'failures', label: 'Fallos y crisis', match: (e) => e.severity === 'critical' },
+  { id: 'failures', label: 'Crisis', match: (e) => e.severity === 'critical' },
 ]
 
-export function LogView() {
-  const log = useGame((s) => s.game.log)
+/** Every decision of N0VA-7 with its chance, outcome and what it cost the crew. */
+export function LogTab({ log }: { log: readonly LogEntry[] }) {
   const [filter, setFilter] = useState('all')
   const active = FILTERS.find((f) => f.id === filter)!
   const entries = [...log].reverse().filter(active.match)
   return (
-    <div className="page">
-      <PageHeader eyebrow="Núcleo Collins · Registro" title="Historial">
-        Cada decisión de N0VA-7, con su probabilidad, su resultado y lo que le costó a la
-        tripulación.
-      </PageHeader>
+    <>
       <div className="filters" role="group" aria-label="Filtrar registro">
         {FILTERS.map((f) => (
           <button
@@ -86,6 +80,6 @@ export function LogView() {
           })}
         </ol>
       )}
-    </div>
+    </>
   )
 }

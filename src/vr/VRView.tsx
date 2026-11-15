@@ -111,7 +111,8 @@ function Clock() {
 
 function World() {
   const game = useGame((s) => s.game)
-  const setupOpen = useGame((s) => s.setupOpen)
+  // The VR scene has no pause menu of its own: any open 2D menu section shows the mode picker.
+  const menuOpen = useGame((s) => s.menu !== null)
   const selectedCrew = useVrUi((s) => s.selectedCrew)
   const assigning = useVrUi((s) => s.assigning)
   const mode = useXR((s) => s.mode)
@@ -157,7 +158,7 @@ function World() {
           rotY={LAYOUT.side.rotY}
         />
       ) : null}
-      {setupOpen && <SetupPanel position={LAYOUT.setup} />}
+      {menuOpen && <SetupPanel position={LAYOUT.setup} />}
     </>
   )
 }

@@ -1,32 +1,38 @@
-/* ELYSIUM — N0VA-7 console tokens. Dark, near-monochrome; colour only carries state. */
+/*
+ * ELYSIUM — game tokens, matched to the landing page (src/styles/landing.css): deep ink
+ * backgrounds, mint accent, Manrope for text and DM Mono for labels and numbers.
+ * Colour beyond the accent only carries state (good / warn / critical).
+ */
 :root {
   color-scheme: dark;
 
-  --bg: #02050b;
-  --bg-raised: #050b15;
-  --panel: #07101d;
-  --panel-2: #0b1726;
-  --line: #172840;
-  --line-strong: #27405f;
-  --text: #d5e0ee;
-  --muted: #8193ad;
-  --dim: #4d6080;
+  --bg: #091117;
+  --bg-raised: #0a1116;
+  --panel: #0d191e;
+  --panel-2: #101c20;
+  --line: #1e2c2f;
+  --line-strong: #2b3b3c;
+  --text: #eef1e8;
+  --muted: #9eaaa5;
+  --dim: #667477;
 
-  --accent: #6ee7f0;
-  --accent-soft: rgb(110 231 240 / 0.1);
-  --accent-glow: 0 0 12px rgb(110 231 240 / 0.35);
+  --accent: #c9f36b;
+  --accent-hover: #d7ff83;
+  --accent-ink: #10171a;
+  --accent-soft: rgb(201 243 107 / 0.08);
+  --accent-glow: 0 0 12px rgb(201 243 107 / 0.35);
 
-  --good: #5fe08f;
-  --ok: #9cc2ff;
+  --good: #8fdc8b;
+  --ok: #9fc3b8;
   --warn: #f2b84b;
   --critical: #ff6b6b;
   --fail: #ff3d5a;
   --warn-soft: rgb(242 184 75 / 0.1);
   --critical-soft: rgb(255 107 107 / 0.1);
-  --good-soft: rgb(95 224 143 / 0.1);
+  --good-soft: rgb(143 220 139 / 0.1);
 
   --font-mono: 'DM Mono', ui-monospace, 'SFMono-Regular', Menlo, monospace;
-  --font-sans: 'Public Sans Variable', 'Segoe UI', system-ui, sans-serif;
+  --font-sans: 'Manrope Variable', 'Manrope', 'Segoe UI', system-ui, sans-serif;
 
   --space-1: 4px;
   --space-2: 8px;
@@ -35,7 +41,7 @@
   --space-5: 24px;
   --space-6: 32px;
   --gutter: clamp(16px, 2.5vw, 32px);
-  --radius: 2px;
-  --sidenav: 196px;
+  --radius: 0;
+  --side: 420px;
   --focus: 2px solid var(--accent);
 }

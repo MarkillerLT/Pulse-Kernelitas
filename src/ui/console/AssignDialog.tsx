@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import * as Dialog from '@radix-ui/react-dialog'
 import { Check, Shuffle, TriangleAlert, X } from 'lucide-react'
 import {
@@ -36,6 +36,7 @@ const signedPct = (value: number) =>
 /**
  * Decision screen for one task option: pick the crew, read the success chance and its causes,
  * then send them — or, when a member is saturated or exhausted, "Mandar de igual forma".
+ * The clock keeps running while it is open; if the task expires or resolves, it closes.
  */
 export function AssignDialog({ task, optionId: initialOption, onClose }: Props) {
   const game = useGame((s) => s.game)
@@ -43,6 +44,10 @@ export function AssignDialog({ task, optionId: initialOption, onClose }: Props) 
   const [optionId, setOptionId] = useState(initialOption)
   const [selected, setSelected] = useState<CrewId[]>([])
   const [errors, setErrors] = useState<string[]>([])
+  const stillOpen = game.tasks.some((t) => t.id === task.id && t.status === 'open')
+  useEffect(() => {
+    if (!stillOpen) onClose()
+  }, [stillOpen, onClose])
   const preview = previewAssignment(game, { taskId: task.id, optionId, crewIds: selected })
   const option = preview.option
   const event = task.kind === 'event' ? getEvent(task.refId) : undefined

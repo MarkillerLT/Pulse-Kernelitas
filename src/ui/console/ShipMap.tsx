@@ -1,5 +1,11 @@
-import { useEffect, useLayoutEffect, useRef, useState, type CSSProperties } from 'react'
-import { useNavigate } from 'react-router'
+import {
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+  type ReactNode,
+} from 'react'
 import { CREW, CREW_IDS, firstName, type CrewId } from '../../domain/content/crew'
 import { SECTORS, SECTOR_IDS, type SectorId } from '../../domain/content/sectors'
 import type { GameState } from '../../domain/model/game'
@@ -13,7 +19,13 @@ const SPRITE = 14
 interface Props {
   game: GameState
   selectedId: CrewId | null
-  onSelect: (id: CrewId) => void
+  /** Toggles a member: pressing the selected one again deselects it. */
+  onSelect: (id: CrewId | null) => void
+  /** Pressing a room opens that sector in the side tabs (the view never changes). */
+  onRoom: (id: SectorId) => void
+  activeSector?: SectorId | null
+  /** Floating card for the selected member. It is moved every frame to follow them. */
+  popover?: ReactNode
   reducedMotion: boolean
 }
 
@@ -22,9 +34,18 @@ interface Props {
  * does; this component only animates *where* they are. Positions live in refs and are written
  * straight to the DOM each frame, so walking never re-renders React.
  */
-export function ShipMap({ game, selectedId, onSelect, reducedMotion }: Props) {
-  const navigate = useNavigate()
+export function ShipMap({
+  game,
+  selectedId,
+  onSelect,
+  onRoom,
+  activeSector,
+  popover,
+  reducedMotion,
+}: Props) {
   const frame = useRef<HTMLDivElement>(null)
+  const pop = useRef<HTMLDivElement>(null)
+  const selectedRef = useRef(selectedId)
   const [scale, setScale] = useState(2)
   const nodes = useRef<Partial<Record<CrewId, HTMLButtonElement | null>>>({})
   const walkers = useRef<Partial<Record<CrewId, Walker>>>({})
@@ -35,6 +56,7 @@ export function ShipMap({ game, selectedId, onSelect, reducedMotion }: Props) {
   useLayoutEffect(() => {
     targetsRef.current = targets
     scaleRef.current = scale
+    selectedRef.current = selectedId
   })
 
   useLayoutEffect(() => {
@@ -53,6 +75,25 @@ export function ShipMap({ game, selectedId, onSelect, reducedMotion }: Props) {
   useEffect(() => {
     let raf = 0
     let last = performance.now()
+    /** Keeps the floating card next to the selected member, inside the map. */
+    const placePopover = () => {
+      const el = pop.current
+      const id = selectedRef.current
+      const w = id && walkers.current[id]
+      if (!el || !w) return
+      const s = scaleRef.current
+      const width = el.offsetWidth
+      const height = el.offsetHeight
+      const side = SPRITE * 0.7
+      let x = (w.pos.x + side) * s
+      if (x + width > MAP_WIDTH * s) x = (w.pos.x - side) * s - width
+      x = Math.max(0, x)
+      const y = Math.min(
+        Math.max(0, (w.pos.y - SPRITE) * s - height * 0.3),
+        Math.max(0, MAP_HEIGHT * s - height),
+      )
+      el.style.transform = `translate(${Math.round(x)}px, ${Math.round(y)}px)`
+    }
     const step = (now: number) => {
       const dt = Math.min(0.1, (now - last) / 1000)
       last = now
@@ -71,6 +112,7 @@ export function ShipMap({ game, selectedId, onSelect, reducedMotion }: Props) {
           node.dataset.hidden = String(w.hidden)
         }
       }
+      placePopover()
       raf = requestAnimationFrame(step)
     }
     raf = requestAnimationFrame(step)
@@ -108,14 +150,14 @@ export function ShipMap({ game, selectedId, onSelect, reducedMotion }: Props) {
             <button
               key={id}
               type="button"
-              className={`room-hotspot${worst ? ` has-${worst}` : ''}`}
+              className={`room-hotspot${worst ? ` has-${worst}` : ''}${activeSector === id ? ' is-active' : ''}`}
               style={{
                 left: room.x * scale,
                 top: room.y * scale,
                 width: room.w * scale,
                 height: room.h * scale,
               }}
-              onClick={() => navigate(`/sectors/${id}`)}
+              onClick={() => onRoom(id)}
               aria-label={`${SECTORS[id].name}${open.length ? `: ${open.length} tarea(s) pendiente(s)` : ''}`}
             >
               <span className="room-label" title={SECTORS[id].name}>
@@ -139,8 +181,8 @@ export function ShipMap({ game, selectedId, onSelect, reducedMotion }: Props) {
               }}
               className={`walker${selectedId === id ? ' is-selected' : ''}`}
               style={{ width: SPRITE * scale, height: SPRITE * scale }}
-              onClick={() => onSelect(id)}
-              aria-label={`${CREW[id].name}`}
+              onClick={() => onSelect(selectedId === id ? null : id)}
+              aria-label={`Seleccionar a ${CREW[id].name}`}
               aria-pressed={selectedId === id}
             >
               <img className="walker-front" src={CREW_SPRITES[id].front} alt="" draggable={false} />
@@ -156,6 +198,11 @@ export function ShipMap({ game, selectedId, onSelect, reducedMotion }: Props) {
             </button>
           )
         })}
+        {selectedId && popover && (
+          <div ref={pop} className="crew-popover-anchor">
+            {popover}
+          </div>
+        )}
       </div>
     </div>
   )

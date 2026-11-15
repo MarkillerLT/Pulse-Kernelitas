@@ -2,7 +2,7 @@ import { useEffect } from 'react'
 import { CREW_IDS } from '../../domain/content/crew'
 import type { GameState } from '../../domain/model/game'
 import { MODE_INFO, tierOf } from '../../domain/rules/difficulty'
-import { gameStore, useGame, type Notice, type Speed } from '../../store/gameStore'
+import { gameStore, useClockMinutes, useGame, type Notice, type Speed } from '../../store/gameStore'
 import { formatClock } from '../../ui/activity'
 import { C } from '../colors'
 import { Button, Label, Meter, Panel } from '../kit'
@@ -57,9 +57,12 @@ export function HudPanel({
   position: [number, number, number]
 }) {
   const speed = useGame((s) => s.speed)
+  const minutes = useClockMinutes()
   const setSpeed = useGame((s) => s.setSpeed)
+  const auto = useGame((s) => s.speedMode === 'auto')
+  const setAutoSpeed = useGame((s) => s.setAutoSpeed)
   const notices = useGame((s) => s.notices)
-  const openSetup = useGame((s) => s.openSetup)
+  const openMenu = useGame((s) => s.openMenu)
   const alive = CREW_IDS.filter((id) => game.crew[id].activity !== 'dead').length
   const over = game.status !== 'active'
   const shown = notices.slice(-3)
@@ -72,7 +75,7 @@ export function HudPanel({
           ELYSIUM
         </Label>
         <Label position={[PAD + 0.17, -0.036, 0]} size={0.019}>
-          {`${formatClock(game.hour)}${speed === 0 && !over ? ' · pausa' : ''}`}
+          {`${formatClock(game.hour, minutes)}${speed === 0 && !over ? ' · pausa' : ''}`}
         </Label>
         <Label position={[PAD + 0.48, -0.036, 0]} size={0.019} color={C.muted}>
           {`Nivel ${game.difficulty.level} · ${MODE_INFO[tierOf(game.difficulty.level)].label} · Tripulación ${alive}/${CREW_IDS.length}`}
@@ -94,7 +97,7 @@ export function HudPanel({
             key={s.value}
             label={s.label}
             size={0.018}
-            active={speed === s.value}
+            active={s.value === 0 ? speed === 0 : !auto && speed === s.value}
             disabled={over}
             width={0.1}
             height={0.045}
@@ -103,12 +106,22 @@ export function HudPanel({
           />
         ))}
         <Button
+          label={auto && speed !== 0 ? `Auto ${speed}×` : 'Auto'}
+          size={0.018}
+          active={auto}
+          disabled={over}
+          width={0.14}
+          height={0.045}
+          position={[PAD + SPEEDS.length * 0.108, -0.135, 0]}
+          onClick={setAutoSpeed}
+        />
+        <Button
           label="Nueva partida"
           size={0.017}
           width={0.2}
           height={0.045}
           position={[W - PAD - 0.2, -0.135, 0]}
-          onClick={() => openSetup(true)}
+          onClick={() => openMenu('difficulty')}
         />
         {over && (
           <Label

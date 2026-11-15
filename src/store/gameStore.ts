@@ -31,9 +31,26 @@ export interface Notice {
 }
 
 export type PersistenceStatus = 'saved' | 'unavailable'
-/** 0 = paused. Real milliseconds per game hour at 1× is HOUR_MS. */
+/**
+ * 0 = paused. Real milliseconds per game hour at 1× is HOUR_MS: 8 s, so the shortest task
+ * deadline (2 h) still leaves 16 s to decide at 1×. The clock shows quarter hours in between.
+ */
 export type Speed = 0 | 1 | 2 | 4
-export const HOUR_MS = 2000
+/** Sections of the pause menu: express guide, difficulty / new game, settings. */
+export type MenuTab = 'guide' | 'difficulty' | 'settings'
+export const HOUR_MS = 8000
+/**
+ * Automatic speed: 1× while a task is waiting for a decision or still running, and this speed
+ * the rest of the time so quiet stretches (nights, routine work) don't drag. Dropping back to 1×
+ * happens on the same game hour a task appears, so the fast speed never eats decision time.
+ */
+export const AUTO_FAST_SPEED: Exclude<Speed, 0> = 4
+export type SpeedMode = 'auto' | 'manual'
+
+/** Speed the automatic mode wants for this state. */
+export function autoSpeedFor(game: GameState): Exclude<Speed, 0> {
+  return game.tasks.some((t) => t.status === 'open' || t.status === 'active') ? 1 : AUTO_FAST_SPEED
+}
 const MAX_NOTICES = 4
 
 export interface GameStore {
@@ -45,9 +62,21 @@ export interface GameStore {
   elapsedMs: number
   /** Best run per mode. */
   records: Records
-  /** Show the mode picker (first launch, or the player asked for a new game). */
-  setupOpen: boolean
-  openSetup: (open: boolean) => void
+  /** Open pause-menu section, or null while playing. The clock only stops while it is open. */
+  menu: MenuTab | null
+  /** First launch: a mode must be chosen before playing, so the menu cannot be dismissed. */
+  mustChooseMode: boolean
+  /** Speed to restore when the menu closes (manual mode). */
+  resumeSpeed: Exclude<Speed, 0>
+  /** 'auto' adapts the speed to the tasks; picking 1×/2×/4× by hand switches to 'manual'. */
+  speedMode: SpeedMode
+  /** Back to the automatic speed. */
+  setAutoSpeed: () => void
+  /** Opens the pause menu (pausing the clock) or switches its section. */
+  openMenu: (tab?: MenuTab) => void
+  /** Closes the menu and resumes the clock at the previous speed. */
+  closeMenu: () => void
+  /** A manual speed (switches to manual mode), or 0 to pause without changing the mode. */
   setSpeed: (speed: Speed) => void
   /** Called by the ticker with real elapsed milliseconds. */
   tick: (realMs: number) => void
@@ -57,7 +86,7 @@ export interface GameStore {
   resetGame: (mode?: DifficultyMode) => void
   exportSave: () => string
   importSave: (raw: string) => { ok: true } | { ok: false; reason: string }
-  setSetting: (key: 'reducedMotion' | 'autoPause', value: boolean) => void
+  setSetting: (key: 'reducedMotion', value: boolean) => void
   dismissNotice: (id: number) => void
 }
 
@@ -77,7 +106,8 @@ const TONE: Record<Note['severity'], Notice['tone']> = {
 /**
  * Bridge between the pure engine, local persistence and React. The store never computes game
  * rules: it converts real time into game hours, calls the engine and saves the snapshot.
- * The game always loads paused so nothing happens before the player looks.
+ * Time always runs: nothing pauses it automatically. Only the pause menu (opened explicitly by
+ * the player) stops the clock — and on first launch, while the player picks a mode.
  */
 export function createGameStore({
   storage,
@@ -134,27 +164,56 @@ export function createGameStore({
           level: updated.difficulty.level,
           day: dayOf(updated.hour),
         })
+      // Automatic mode follows the tasks, but never un-pauses the clock.
+      const running = (patch.speed ?? get().speed) !== 0
+      if (get().speedMode === 'auto' && running && updated.status === 'active')
+        patch = { ...patch, speed: autoSpeedFor(updated) }
       set({ game: updated, persistence, notices: pushNotices(notes, extra), records, ...patch })
     }
     return {
       game,
+      // Opening the game always starts on the pause menu: nothing runs until the player resumes.
       speed: 0,
       notices: initialNotices,
       persistence: initialPersistence,
       elapsedMs: 0,
       records,
-      setupOpen: initialSetup,
-      openSetup: (open) => set({ setupOpen: open, speed: open ? 0 : get().speed }),
-      setSpeed: (speed) => set({ speed: get().game.status === 'active' ? speed : 0 }),
+      menu: game.status === 'active' || initialSetup ? 'guide' : null,
+      mustChooseMode: initialSetup,
+      resumeSpeed: 1,
+      speedMode: 'auto',
+      openMenu: (tab = 'guide') => {
+        const { menu, speed } = get()
+        if (menu) return set({ menu: tab })
+        set({ menu: tab, speed: 0, resumeSpeed: speed === 0 ? get().resumeSpeed : speed })
+      },
+      closeMenu: () => {
+        if (get().mustChooseMode) return
+        const { game, speedMode, resumeSpeed } = get()
+        const speed = speedMode === 'auto' ? autoSpeedFor(game) : resumeSpeed
+        set({ menu: null, speed: game.status === 'active' ? speed : 0 })
+      },
+      setSpeed: (speed) => {
+        if (get().game.status !== 'active') return set({ speed: 0 })
+        if (speed === 0) return set({ speed: 0 })
+        set({ speed, resumeSpeed: speed, speedMode: 'manual' })
+      },
+      setAutoSpeed: () => {
+        const { game, speed } = get()
+        set({
+          speedMode: 'auto',
+          ...(speed !== 0 && game.status === 'active' ? { speed: autoSpeedFor(game) } : {}),
+        })
+      },
       tick: (realMs) => {
         const { speed, elapsedMs, game: current } = get()
         if (speed === 0 || current.status !== 'active') return
         const total = elapsedMs + realMs * speed
         const hours = Math.floor(total / HOUR_MS)
         if (hours === 0) return set({ elapsedMs: total })
-        const result = advanceHours(current, hours, { stopOnPause: current.settings.autoPause })
-        const pause =
-          (result.pause && current.settings.autoPause) || result.state.status !== 'active'
+        // No automatic pauses: only the end of the game stops the clock.
+        const result = advanceHours(current, hours)
+        const pause = result.state.status !== 'active'
         commit(result.state, result.notes, {
           elapsedMs: pause ? 0 : total - hours * HOUR_MS,
           speed: pause ? 0 : speed,
@@ -190,7 +249,8 @@ export function createGameStore({
               pause: false,
             },
           ],
-          { speed: 0, elapsedMs: 0, setupOpen: false },
+          // A new game starts running right away.
+          { speed: get().resumeSpeed, elapsedMs: 0, menu: null, mustChooseMode: false },
         )
       },
       exportSave: () => serializeSave(get().game, now()),
@@ -224,6 +284,11 @@ export function createGameStore({
 export type GameStoreApi = ReturnType<typeof createGameStore>
 
 export const gameStore: GameStoreApi = createGameStore({ storage: getBrowserStorage() })
+
+/** Minutes into the current game hour, rounded down to the quarter (0, 15, 30, 45). */
+export function useClockMinutes(): number {
+  return useStore(gameStore, (s) => Math.min(45, Math.floor((s.elapsedMs / HOUR_MS) * 4) * 15))
+}
 
 export function useGame<T>(selector: (store: GameStore) => T): T {
   return useStore(gameStore, selector)

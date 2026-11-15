@@ -1,19 +1,20 @@
 # Sistema visual — consola de N0VA-7
 
-Interfaz de una IA que administra la nave: terminal retro, oscura y casi monocroma. El color solo
-comunica estado.
+Mismo lenguaje que la landing (`src/styles/landing.css`): tinta oscura, acento verde menta, titulares
+en Manrope con tracking negativo y etiquetas en DM Mono en mayúsculas. Esquinas rectas. Fuera del
+acento, el color solo comunica estado.
 
 ## Tokens (`src/styles/tokens.css`)
 
 | Token                          | Valor                       | Uso                                                    |
 | ------------------------------ | --------------------------- | ------------------------------------------------------ |
-| `--bg`                         | #02050B                     | Fondo, espacio profundo                                |
-| `--panel` / `--panel-2`        | #07101D / #0B1726           | Paneles y superficies elevadas                         |
-| `--line` / `--line-strong`     | #172840 / #27405F           | Bordes y separadores                                   |
-| `--text` / `--muted` / `--dim` | #D5E0EE / #8193AD / #4D6080 | Jerarquía de texto                                     |
-| `--accent`                     | #6EE7F0                     | Identidad de N0VA-7, foco, selección, acción principal |
-| `--good`                       | #5FE08F                     | Rango óptimo                                           |
-| `--ok`                         | #9CC2FF                     | Rango normal                                           |
+| `--bg`                         | #091117                     | Fondo, espacio profundo                                |
+| `--panel` / `--panel-2`        | #0D191E / #101C20           | Paneles y superficies elevadas                         |
+| `--line` / `--line-strong`     | #1E2C2F / #2B3B3C           | Bordes y separadores                                   |
+| `--text` / `--muted` / `--dim` | #EEF1E8 / #9EAAA5 / #667477 | Jerarquía de texto                                     |
+| `--accent`                     | #C9F36B                     | Identidad de N0VA-7, foco, selección, acción principal |
+| `--good`                       | #8FDC8B                     | Rango óptimo                                           |
+| `--ok`                         | #9FC3B8                     | Rango normal                                           |
 | `--warn`                       | #F2B84B                     | Rango degradado, penalizaciones                        |
 | `--critical` / `--fail`        | #FF6B6B / #FF3D5A           | Rango crítico / valor terminal                         |
 
@@ -22,8 +23,9 @@ Los indicadores de estadística son barras de 10 segmentos coloreadas según los
 
 ## Tipografía
 
-DM Mono para toda la interfaz (etiquetas, números, terminal) y Public Sans para párrafos largos.
-Ambas son autoalojadas con Fontsource (licencias en `public/licenses/`).
+Manrope para textos, botones y titulares (pesos 600–800, tracking negativo en tamaños grandes) y
+DM Mono para etiquetas, códigos y números pequeños, en mayúsculas con tracking amplio. Las dos son
+autoalojadas con Fontsource (licencias en `public/licenses/`).
 
 ## Sprites y nave
 

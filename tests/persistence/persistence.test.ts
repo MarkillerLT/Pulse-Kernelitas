@@ -10,7 +10,7 @@ import {
   serializeSave,
   type StorageLike,
 } from '../../src/persistence/saveGame'
-import { HOUR_MS, createGameStore } from '../../src/store/gameStore'
+import { AUTO_FAST_SPEED, HOUR_MS, autoSpeedFor, createGameStore } from '../../src/store/gameStore'
 
 const NOW = '2026-11-14T12:00:00.000Z'
 
@@ -111,7 +111,11 @@ describe('game store persistence', () => {
     const reloaded = createGameStore(deps())
     expect(reloaded.getState().game.crew.lyra.activity).toBe('task')
     expect(reloaded.getState().game.tasks[0].status).toBe('active')
+    // A restored game opens on the pause menu; resuming runs it at 1×.
+    expect(reloaded.getState().menu).toBe('guide')
     expect(reloaded.getState().speed).toBe(0)
+    reloaded.getState().closeMenu()
+    expect(reloaded.getState().speed).toBe(1)
   })
 
   it('does not change the state when a decision is invalid', () => {
@@ -163,13 +167,80 @@ describe('game store persistence', () => {
     expect(parsed.state.tasks.every((t) => t.recurring === false)).toBe(true)
   })
 
-  it('opens the mode picker on first launch and starts in the chosen mode', () => {
+  it('opens the pause menu on first launch and starts running in the chosen mode', () => {
     const store = createGameStore(deps())
-    expect(store.getState().setupOpen).toBe(true)
+    expect(store.getState().menu).toBe('guide')
+    expect(store.getState().mustChooseMode).toBe(true)
+    store.getState().closeMenu() // cannot skip choosing a mode
+    expect(store.getState().menu).toBe('guide')
     store.getState().resetGame('hard')
-    expect(store.getState().setupOpen).toBe(false)
+    expect(store.getState().menu).toBeNull()
+    expect(store.getState().speed).toBe(1)
     expect(store.getState().game.difficulty).toEqual({ mode: 'hard', level: 10 })
-    expect(createGameStore(deps()).getState().setupOpen).toBe(false)
+    // With a save, the game still opens on the pause menu, but it can be dismissed.
+    const reloaded = createGameStore(deps())
+    expect(reloaded.getState().menu).toBe('guide')
+    expect(reloaded.getState().mustChooseMode).toBe(false)
+    reloaded.getState().closeMenu()
+    expect(reloaded.getState().menu).toBeNull()
+    expect(reloaded.getState().speed).toBe(1)
+  })
+
+  it('only the pause menu stops the clock, and closing it resumes the previous speed', () => {
+    const store = createGameStore(deps())
+    store.getState().resetGame('easy')
+    store.getState().setSpeed(4)
+    store.getState().openMenu('settings')
+    expect(store.getState().speed).toBe(0)
+    store.getState().tick(HOUR_MS * 5)
+    expect(store.getState().game.hour).toBe(8)
+    store.getState().closeMenu()
+    expect(store.getState().speed).toBe(4)
+  })
+
+  it('never pauses on its own when urgent events happen', () => {
+    const store = createGameStore(deps())
+    store.getState().resetGame('easy')
+    // Day 2 at 09:00 opens the first story mission, an event that used to auto-pause.
+    store.getState().tick(HOUR_MS * 30)
+    expect(store.getState().game.hour).toBe(8 + 30)
+    expect(store.getState().speed).toBeGreaterThan(0)
+  })
+
+  it('auto speed: 1× while a task is pending or running, fast otherwise', () => {
+    const store = createGameStore(deps())
+    store.getState().resetGame('easy')
+    const game = store.getState().game
+    expect(store.getState().speedMode).toBe('auto')
+    // A new game starts with the air-filter task open → 1×.
+    expect(store.getState().speed).toBe(1)
+    expect(autoSpeedFor(game)).toBe(1)
+    const running = structuredClone(game)
+    running.tasks[0].status = 'active'
+    expect(autoSpeedFor(running)).toBe(1)
+    expect(autoSpeedFor({ ...game, tasks: [] })).toBe(AUTO_FAST_SPEED)
+
+    // Once nothing is pending, the next committed hour speeds up.
+    store.setState({ game: { ...game, tasks: [] } })
+    store.getState().tick(HOUR_MS)
+    const after = store.getState()
+    expect(after.speed).toBe(autoSpeedFor(after.game))
+  })
+
+  it('a manual speed is kept until auto is chosen again', () => {
+    const store = createGameStore(deps())
+    store.getState().resetGame('easy')
+    store.getState().setSpeed(2)
+    expect(store.getState().speedMode).toBe('manual')
+    store.getState().tick(HOUR_MS * 3)
+    expect(store.getState().speed).toBe(2)
+    // Pausing and resuming keeps the manual choice.
+    store.getState().openMenu()
+    store.getState().closeMenu()
+    expect(store.getState().speed).toBe(2)
+    store.getState().setAutoSpeed()
+    expect(store.getState().speedMode).toBe('auto')
+    expect(store.getState().speed).toBe(autoSpeedFor(store.getState().game))
   })
 
   it('keeps the best run per mode when a game ends, across new games', () => {

@@ -14,7 +14,8 @@ export function SetupPanel({ position }: { position: [number, number, number] })
   const game = useGame((s) => s.game)
   const records = useGame((s) => s.records)
   const resetGame = useGame((s) => s.resetGame)
-  const openSetup = useGame((s) => s.openSetup)
+  const closeMenu = useGame((s) => s.closeMenu)
+  const mustChoose = useGame((s) => s.mustChooseMode)
   const [mode, setMode] = useState<DifficultyMode>(game.difficulty.mode)
   const inProgress = game.status === 'active' && game.hour > START_HOUR
   const height = 0.56
@@ -25,13 +26,16 @@ export function SetupPanel({ position }: { position: [number, number, number] })
         <Label position={[PAD, -0.035, 0]} size={0.034} bold>
           Elige la dificultad
         </Label>
-        <Button
-          label="X"
-          width={0.05}
-          height={0.05}
-          position={[W - PAD - 0.05, -0.025, 0]}
-          onClick={() => openSetup(false)}
-        />
+        {!mustChoose && (
+          <Button
+            label="X"
+            width={0.05}
+            height={0.05}
+            position={[W - PAD - 0.05, -0.025, 0]}
+
+            onClick={closeMenu}
+          />
+        )}
         <Label position={[PAD, -0.085, 0]} size={0.018} color={C.muted} maxWidth={INNER}>
           Sobrevive todo lo que puedas. El nivel sube con el tiempo: más emergencias, tareas más
           largas y menos sueño.
