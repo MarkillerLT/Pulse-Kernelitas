@@ -69,3 +69,38 @@ export function sfxReturn(success: boolean) {
   const notes = success ? [523, 659, 784, 1047] : [659, 523, 392, 330]
   notes.forEach((f, i) => tone(f, i * 0.12, 0.35, 0.05, 'triangle'))
 }
+
+/** Deep swell rising into a hiss: the drive spools up and the ship jumps to warp. */
+export function sfxWarp() {
+  const a = audio()
+  if (!a) return
+  const seconds = 2.4
+  const buffer = a.createBuffer(1, a.sampleRate * seconds, a.sampleRate)
+  const data = buffer.getChannelData(0)
+  for (let i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1
+  const noise = a.createBufferSource()
+  noise.buffer = buffer
+  const filter = a.createBiquadFilter()
+  filter.type = 'bandpass'
+  filter.Q.value = 1.2
+  const t = a.currentTime
+  filter.frequency.setValueAtTime(80, t)
+  filter.frequency.exponentialRampToValueAtTime(2400, t + 1.6)
+  const vol = a.createGain()
+  vol.gain.setValueAtTime(0, t)
+  vol.gain.linearRampToValueAtTime(0.14, t + 1.2)
+  vol.gain.exponentialRampToValueAtTime(0.0001, t + seconds)
+  noise.connect(filter).connect(vol).connect(a.destination)
+  noise.start(t)
+  const osc = a.createOscillator()
+  const og = a.createGain()
+  osc.type = 'sawtooth'
+  osc.frequency.setValueAtTime(55, t)
+  osc.frequency.exponentialRampToValueAtTime(220, t + 1.5)
+  og.gain.setValueAtTime(0, t)
+  og.gain.linearRampToValueAtTime(0.04, t + 0.8)
+  og.gain.exponentialRampToValueAtTime(0.0001, t + 2)
+  osc.connect(og).connect(a.destination)
+  osc.start(t)
+  osc.stop(t + 2.1)
+}

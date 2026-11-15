@@ -44,7 +44,7 @@ function NoticeRow({ notice, y }: { notice: Notice; y: number }) {
 
 /**
  * Status bar above the ship: clock, level, ship systems, time controls (Auto / 1× / 2× / 4× and
- * the pause menu) and one button per sector to go on board and see it life-size. Latest notices
+ * the pause menu), the cockpit view (only with no task pending) and one button per sector to go on board and see it life-size. Latest notices
  * at the bottom.
  */
 export function HudPanel({
@@ -64,6 +64,8 @@ export function HudPanel({
   const openMenu = useGame((s) => s.openMenu)
   const notices = useGame((s) => s.notices)
   const goOnboard = useVrUi((s) => s.goOnboard)
+  const goCockpit = useVrUi((s) => s.goCockpit)
+  const pending = game.tasks.some((t) => t.status === 'open')
   const alive = CREW_IDS.filter((id) => game.crew[id].activity !== 'dead').length
   const over = game.status !== 'active'
   const shown = notices.slice(-2)
@@ -141,6 +143,17 @@ export function HudPanel({
           height={0.05}
           position={[PAD + 0.39, rowControls, 0]}
           onClick={() => openMenu('guide')}
+        />
+        {/* The commander's seat is a reward for a clear board: only with no task pending. */}
+        <Button
+          label={pending ? 'Cabina · resuelve las tareas' : 'Ver desde la cabina'}
+          tone={pending ? 'default' : 'primary'}
+          size={0.019}
+          disabled={pending || over}
+          width={INNER - 0.6}
+          height={0.05}
+          position={[PAD + 0.6, rowControls, 0]}
+          onClick={goCockpit}
         />
         <Label position={[PAD, rowControls - 0.066, 0]} size={0.015} color={C.dim}>
           RECORRER A BORDO · ELIGE UN SECTOR PARA VERLO A TAMAÑO REAL

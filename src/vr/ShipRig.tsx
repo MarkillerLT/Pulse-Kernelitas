@@ -9,10 +9,14 @@ const UP = new Vector3(0, 1, 0)
 const FADE_OUT = 0.22
 const FADE_IN = 0.35
 const same = (a: View, b: View) =>
-  a.mode === b.mode && (a.mode === 'diorama' || a.sector === b.sector)
+  a.mode === b.mode && (a.mode !== 'onboard' || a.sector === b.sector)
 
 /** Ship group transform for a view: tabletop diorama, or life-size around the player. */
 function applyView(group: Group, view: View) {
+  useVrUi.getState().setShown(view.mode)
+  // From the cockpit the ship itself is out of sight: the player sits in its nose.
+  group.visible = view.mode !== 'cockpit'
+  if (view.mode === 'cockpit') return
   if (view.mode === 'diorama') {
     group.position.set(...LAYOUT.diorama)
     // Raised a few degrees at the far edge: reads better than a flat table and stands apart
@@ -103,7 +107,9 @@ function DesktopCamera() {
     const [cam, target] =
       mode === 'onboard'
         ? [new Vector3(0, 1.6, 0.9), new Vector3(0, 1.55, -1)]
-        : [new Vector3(0, 1.75, 0.75), new Vector3(0, 1.2, -1)]
+        : mode === 'cockpit'
+          ? [new Vector3(0, 1.5, 0.35), new Vector3(0, 1.2, -1.5)]
+          : [new Vector3(0, 1.75, 0.75), new Vector3(0, 1.2, -1)]
     camera.position.copy(cam)
     controls?.target.copy(target)
     controls?.update()

@@ -164,7 +164,8 @@ function Sun() {
   )
 }
 
-export function Backdrop() {
+/** `planet={false}` keeps only the sky: at warp the ship has left the planet's orbit behind. */
+export function Backdrop({ planet = true }: { planet?: boolean }) {
   return (
     <>
       <directionalLight position={SUN_POS} intensity={1.4} color="#fff0d8" />
@@ -178,10 +179,14 @@ export function Backdrop() {
           depthWrite={false}
         />
       </mesh>
-      <Sun />
-      <Planet />
-      <Moon />
-      <AsteroidBelt />
+      {planet && (
+        <>
+          <Sun />
+          <Planet />
+          <Moon />
+          <AsteroidBelt />
+        </>
+      )}
     </>
   )
 }

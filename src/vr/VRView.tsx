@@ -15,6 +15,7 @@ import type { Mesh } from 'three'
 import { gameStore, useGame } from '../store/gameStore'
 import { Backdrop } from './Backdrop'
 import { C } from './colors'
+import { Cockpit } from './Cockpit'
 import { diag, installDiag } from './diag'
 import { DiagOverlay } from './DiagOverlay'
 import { Crew } from './Crew'
@@ -149,8 +150,11 @@ function World() {
   const mode = useXR((s) => s.mode)
   const inSession = useXR((s) => s.session != null)
   const passthrough = mode === 'immersive-ar'
-  // On board, every panel disappears to let the ship be seen; only a way back remains.
-  const onboard = useVrUi((s) => s.view.mode === 'onboard')
+  // On board or in the cockpit, every panel disappears to let the view be seen; only a way
+  // back remains.
+  const onboard = useVrUi((s) => s.view.mode !== 'diorama')
+  // What is on screen right now (switches mid-fade, while everything is black).
+  const cockpit = useVrUi((s) => s.shown === 'cockpit')
 
   return (
     <>
@@ -158,7 +162,8 @@ function World() {
       <TaskChime />
       {!passthrough && <color attach="background" args={[C.space]} />}
       {!passthrough && <Stars radius={320} depth={80} count={5000} factor={6} fade speed={0.3} />}
-      {!passthrough && <Backdrop />}
+      {!passthrough && <Backdrop planet={!cockpit} />}
+      {cockpit && <Cockpit />}
       <SceneEnvironment />
       <hemisphereLight args={['#cfe0ff', '#1a1f2b', 0.6]} />
       <directionalLight position={[1.5, 3, 1]} intensity={1.0} />

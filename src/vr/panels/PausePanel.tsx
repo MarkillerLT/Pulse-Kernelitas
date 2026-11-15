@@ -211,8 +211,11 @@ function OptionsTab() {
       label: 'Vista',
       text: 'Maqueta sobre la mesa, o a bordo a tamaño real.',
       button: {
-        label: view.mode === 'onboard' ? 'A bordo · cambiar a maqueta' : 'Maqueta · subir a bordo',
-        onClick: () => (view.mode === 'onboard' ? goDiorama() : goOnboard(view.sector)),
+        label:
+          view.mode === 'diorama'
+            ? 'Maqueta · subir a bordo'
+            : `${view.mode === 'onboard' ? 'A bordo' : 'Cabina'} · cambiar a maqueta`,
+        onClick: () => (view.mode === 'diorama' ? goOnboard(view.sector) : goDiorama()),
       },
     },
   ]
