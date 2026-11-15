@@ -53,9 +53,12 @@ const at = (x: number, y: number, z: number) => ({
  * inside a comfortable ±60° arc, so nobody has to turn around to play.
  */
 export const LAYOUT = {
-  /** Tabletop diorama in front of the player, tilted a few degrees toward them. */
-  diorama: [0, 0.8, -1.15] as Vec3,
-  dioramaTilt: 0.21,
+  /**
+   * The diorama, raised and tilted ~35° toward the player like a command table, so it reads well
+   * both seated (eyes ~1.2 m) and standing (~1.65 m) and is never hidden by the log console.
+   */
+  diorama: [0, 1.1, -1.25] as Vec3,
+  dioramaTilt: 0.62,
   /** Status bar above the diorama: clock, speed, ship systems, view controls. */
   hud: at(0, 1.86, -1.5),
   /** Mission launch / return announcements, above the status bar. */
@@ -68,10 +71,10 @@ export const LAYOUT = {
   /** Modal windows (decisions, pause menu) right in front, at eye level. */
   modal: at(0, 1.55, -0.85),
   /**
-   * Cockpit-style log console: a desk at waist height, tilted toward the player and kept below
-   * the line of sight from the eyes (~1.6 m) to the diorama, so it never hides the ship.
+   * Cockpit-style log console: a low desk tilted toward the player, kept below the line of sight
+   * to the diorama from both seated and standing eye heights, so it never hides the ship.
    */
-  console: { position: [0, 0.84, -0.4] as Vec3, tilt: -0.85 },
+  console: { position: [0, 0.72, -0.42] as Vec3, tilt: -0.9 },
 }
 
 /**
