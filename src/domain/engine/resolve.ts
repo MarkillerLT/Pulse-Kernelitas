@@ -3,6 +3,7 @@ import { getEvent } from '../content/events'
 import { getMission, getRoute } from '../content/missions'
 import type { GameState, Task } from '../model/game'
 import { sumDeltas } from '../model/stats'
+import { scaledDeadline } from '../rules/difficulty'
 import { missionComposition, type EffectSource } from './composition'
 import { nextRandom, pickRandom } from './random'
 import { spawnMissionTask, type Note } from './spawn'
@@ -119,7 +120,7 @@ export function resolveEventTask(state: GameState, task: Task, notes: Note[]) {
       title: `Reintentar: ${event.title}`,
       attempt: task.attempt + 1,
       createdAt: state.hour,
-      deadline: state.hour + event.deadlineHours,
+      deadline: state.hour + scaledDeadline(event.deadlineHours, state.difficulty.level),
       status: 'open',
       assignment: null,
     })
@@ -175,11 +176,12 @@ export function resolveMissionTask(state: GameState, task: Task, notes: Note[]) 
   const text = success
     ? `${comp.reward.text} ${lines.join(' ')}`.trim()
     : `El equipo regresó sin cumplir el objetivo.${failureCause(task)} ${lines.join(' ')}`.trim()
-  state.missions[mission.id] = success ? 'completed' : 'failed'
+  if (!task.recurring) state.missions[mission.id] = success ? 'completed' : 'failed'
+  const name = task.recurring ? `Expedición: ${mission.title}` : mission.title
   addLog(state, {
     kind: 'mission',
     severity: success ? 'success' : 'critical',
-    title: `${success ? 'Misión cumplida' : 'Misión fallida'}: ${mission.title}`,
+    title: `${success ? 'Misión cumplida' : 'Misión fallida'}: ${name}`,
     text,
     crewIds: [...crewIds],
     chance: task.assignment.chance,
@@ -188,11 +190,11 @@ export function resolveMissionTask(state: GameState, task: Task, notes: Note[]) 
   notes.push({
     severity: success ? 'success' : 'critical',
     text: success
-      ? `Misión cumplida: ${mission.title}.`
-      : `Misión fallida: ${mission.title}.${failureCause(task)} Puedes reintentarla.`,
+      ? `Misión cumplida: ${name}.`
+      : `Misión fallida: ${name}.${failureCause(task)} Puedes reintentarla.`,
     pause: true,
   })
-  if (!success) spawnMissionTask(state, mission.id, task.attempt + 1)
+  if (!success) spawnMissionTask(state, mission.id, task.attempt + 1, task.recurring)
 }
 
 /** An open task reached its deadline without a decision. */
@@ -218,18 +220,19 @@ export function expireTask(state: GameState, task: Task, notes: Note[]) {
   }
   if (task.kind === 'mission') {
     const mission = getMission(task.refId)!
-    state.missions[mission.id] = 'lost'
+    if (!task.recurring) state.missions[mission.id] = 'lost'
+    const morale = task.recurring ? -5 : -10
     const tracked = trackChanges(state, () => {
-      for (const id of aliveCrew(state)) changeCrew(state, id, { morale: -10 })
+      for (const id of aliveCrew(state)) changeCrew(state, id, { morale })
     })
     addLog(state, {
       kind: 'mission',
       severity: 'critical',
-      title: `Oportunidad perdida: ${mission.title}`,
+      title: `Oportunidad perdida: ${task.title}`,
       text: 'La ventana de la misión se cerró sin que N0VA-7 enviara un equipo.',
       ...tracked,
     })
-    notes.push({ severity: 'critical', text: `Se perdió la misión ${mission.title}.`, pause: true })
+    notes.push({ severity: 'critical', text: `Se perdió la misión ${task.title}.`, pause: true })
     return
   }
   const event = getEvent(task.refId)

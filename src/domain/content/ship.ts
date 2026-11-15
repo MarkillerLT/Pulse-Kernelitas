@@ -20,8 +20,6 @@ export const INITIAL_SHIP: ShipSystems = {
   medicine: 70,
 }
 
-/** Length of the journey to the destination planet. Surviving it wins the game. */
-export const JOURNEY_DAYS = 30
 /** Game clock starts on day 1 at 08:00. */
 export const START_HOUR = 8
 /** Daily schedule: crew on duty go to sleep at 22:00 and wake up at 06:00. */

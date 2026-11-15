@@ -4,8 +4,8 @@ RPG de supervivencia espacial y gestión de tripulación. El jugador es **N0VA-7
 artificial central de la nave Elysium: supervisa a cinco astronautas, evalúa riesgos y asigna
 misiones. Cada decisión tiene consecuencias.
 
-RPG de decisiones en tiempo real con pausa: un viaje de 30 días en el que N0VA-7 vigila las
-estadísticas, responde a crisis y elige a quién enviar a cada tarea.
+RPG de decisiones en tiempo real con pausa y supervivencia sin fin (tres modos, dificultad
+progresiva por niveles) en el que N0VA-7 vigila las estadísticas, responde a crisis y elige a quién enviar a cada tarea.
 
 ## Ejecutar
 

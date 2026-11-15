@@ -3,7 +3,6 @@ import { Download, RotateCcw, Upload } from 'lucide-react'
 import { GAME_SCHEMA_VERSION } from '../../domain/model/game'
 import { SAVE_KEY } from '../../persistence/saveGame'
 import { useGame } from '../../store/gameStore'
-import { ConfirmDialog } from '../components/ConfirmDialog'
 import { PageHeader } from '../components/PageHeader'
 import { Panel } from '../components/Panel'
 import { formatTimestamp, pad } from '../format'
@@ -15,7 +14,7 @@ export function SystemView() {
   const persistence = useGame((s) => s.persistence)
   const exportSave = useGame((s) => s.exportSave)
   const importSave = useGame((s) => s.importSave)
-  const resetGame = useGame((s) => s.resetGame)
+  const openSetup = useGame((s) => s.openSetup)
   const setSetting = useGame((s) => s.setSetting)
   const fileInput = useRef<HTMLInputElement>(null)
   const [importMessage, setImportMessage] = useState<string | null>(null)
@@ -119,20 +118,12 @@ export function SystemView() {
 
         <Panel title="Reinicio" code="!" className="danger-zone">
           <p className="small muted">
-            Borra el progreso actual y restaura la tripulación a su estado inicial.
+            Elige una dificultad y empieza de cero. Se perderá la partida actual (los récords se
+            conservan); exporta una copia antes si quieres guardarla.
           </p>
-          <ConfirmDialog
-            trigger={
-              <button type="button" className="btn btn-danger">
-                <RotateCcw size={14} aria-hidden="true" /> Reiniciar partida
-              </button>
-            }
-            title="¿Reiniciar la partida?"
-            description="Se perderán las estadísticas, misiones completadas e historial actuales. Exporta una copia antes si quieres conservarla."
-            confirmLabel="Reiniciar"
-            danger
-            onConfirm={resetGame}
-          />
+          <button type="button" className="btn btn-danger" onClick={() => openSetup(true)}>
+            <RotateCcw size={14} aria-hidden="true" /> Nueva partida
+          </button>
         </Panel>
       </div>
     </div>

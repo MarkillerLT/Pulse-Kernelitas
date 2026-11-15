@@ -13,11 +13,16 @@ import {
   clearSave,
   getBrowserStorage,
   loadGame,
+  loadRecords,
   parseSave,
   saveGame,
+  saveRecord,
   serializeSave,
+  type Records,
   type StorageLike,
 } from '../persistence/saveGame'
+import { dayOf } from '../domain/engine/state'
+import type { DifficultyMode } from '../domain/rules/difficulty'
 
 export interface Notice {
   id: number
@@ -38,12 +43,18 @@ export interface GameStore {
   persistence: PersistenceStatus
   /** Real time accumulated toward the next game hour. */
   elapsedMs: number
+  /** Best run per mode. */
+  records: Records
+  /** Show the mode picker (first launch, or the player asked for a new game). */
+  setupOpen: boolean
+  openSetup: (open: boolean) => void
   setSpeed: (speed: Speed) => void
   /** Called by the ticker with real elapsed milliseconds. */
   tick: (realMs: number) => void
   assign: (order: AssignOrder) => { ok: true } | { ok: false; errors: string[] }
   order: (crewId: string, order: DirectOrder) => { ok: true } | { ok: false; errors: string[] }
-  resetGame: () => void
+  /** Starts a new game in `mode` (default: the current mode). */
+  resetGame: (mode?: DifficultyMode) => void
   exportSave: () => string
   importSave: (raw: string) => { ok: true } | { ok: false; reason: string }
   setSetting: (key: 'reducedMotion' | 'autoPause', value: boolean) => void
@@ -97,6 +108,8 @@ export function createGameStore({
       return 'unavailable'
     }
   }
+  const initialSetup = loaded?.status !== 'ok'
+  let records = loadRecords(storage)
   const initialPersistence = persist(game)
   const unavailableText =
     'El almacenamiento local no está disponible. El progreso no se guardará al cerrar.'
@@ -115,7 +128,13 @@ export function createGameStore({
         persistence === 'unavailable' && get().persistence === 'saved'
           ? [{ id: ++noticeId, tone: 'error' as const, text: unavailableText }]
           : []
-      set({ game: updated, persistence, notices: pushNotices(notes, extra), ...patch })
+      // Endless survival: store the run when it ends.
+      if (get().game.status === 'active' && updated.status !== 'active')
+        records = saveRecord(storage, get().records, updated.difficulty.mode, {
+          level: updated.difficulty.level,
+          day: dayOf(updated.hour),
+        })
+      set({ game: updated, persistence, notices: pushNotices(notes, extra), records, ...patch })
     }
     return {
       game,
@@ -123,6 +142,9 @@ export function createGameStore({
       notices: initialNotices,
       persistence: initialPersistence,
       elapsedMs: 0,
+      records,
+      setupOpen: initialSetup,
+      openSetup: (open) => set({ setupOpen: open, speed: open ? 0 : get().speed }),
       setSpeed: (speed) => set({ speed: get().game.status === 'active' ? speed : 0 }),
       tick: (realMs) => {
         const { speed, elapsedMs, game: current } = get()
@@ -150,7 +172,7 @@ export function createGameStore({
         commit(result.state, result.notes)
         return { ok: true }
       },
-      resetGame: () => {
+      resetGame: (mode = get().game.difficulty.mode) => {
         if (storage)
           try {
             clearSave(storage)
@@ -158,13 +180,17 @@ export function createGameStore({
             // The new game is saved right after; a failure is reported by commit.
           }
         set({ notices: [] })
+        const fresh = createGame({ now: now(), seed: Date.now() >>> 0, mode })
         commit(
-          createGame({ now: now(), seed: Date.now() >>> 0 }),
-          [{ severity: 'success', text: 'Nueva partida iniciada.', pause: false }],
-          {
-            speed: 0,
-            elapsedMs: 0,
-          },
+          fresh,
+          [
+            {
+              severity: 'success',
+              text: `Nueva partida en nivel ${fresh.difficulty.level}.`,
+              pause: false,
+            },
+          ],
+          { speed: 0, elapsedMs: 0, setupOpen: false },
         )
       },
       exportSave: () => serializeSave(get().game, now()),

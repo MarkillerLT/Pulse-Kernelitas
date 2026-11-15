@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import { createGame } from '../../src/domain/engine/createGame'
 import {
   BACKUP_KEY,
+  RECORDS_KEY,
   SAVE_KEY,
   loadGame,
   parseSave,
@@ -144,6 +145,49 @@ describe('game store persistence', () => {
     raw.version = 1
     const parsed = parseSave(JSON.stringify(raw))
     expect(parsed.ok).toBe(false)
+  })
+
+  it('migrates a v2 save (30-day journey) to endless survival in Fácil', () => {
+    const raw = JSON.parse(serializeSave(createGame({ now: NOW }), NOW))
+    const v2 = raw.state
+    delete v2.difficulty
+    delete v2.nextMissionAt
+    for (const task of v2.tasks) delete task.recurring
+    v2.schemaVersion = 2
+    v2.hour = 8 + 36 * 3 + 5
+    raw.version = 2
+    const parsed = parseSave(JSON.stringify(raw))
+    expect(parsed.ok).toBe(true)
+    if (!parsed.ok) return
+    expect(parsed.state.difficulty).toEqual({ mode: 'easy', level: 4 })
+    expect(parsed.state.tasks.every((t) => t.recurring === false)).toBe(true)
+  })
+
+  it('opens the mode picker on first launch and starts in the chosen mode', () => {
+    const store = createGameStore(deps())
+    expect(store.getState().setupOpen).toBe(true)
+    store.getState().resetGame('hard')
+    expect(store.getState().setupOpen).toBe(false)
+    expect(store.getState().game.difficulty).toEqual({ mode: 'hard', level: 10 })
+    expect(createGameStore(deps()).getState().setupOpen).toBe(false)
+  })
+
+  it('keeps the best run per mode when a game ends, across new games', () => {
+    const store = createGameStore(deps())
+    const game = structuredClone(store.getState().game)
+    game.ship.lifeSupport = 0.1
+    game.ship.power = 0
+    game.hour = 8 + 36 * 2
+    game.difficulty.level = 3
+    store.setState({ game })
+    store.getState().setSpeed(4)
+    for (let i = 0; i < 20 && store.getState().game.status === 'active'; i++)
+      store.getState().tick(HOUR_MS)
+    expect(store.getState().game.status).toBe('lost')
+    expect(store.getState().records.easy).toEqual({ level: 3, day: 4 })
+    store.getState().resetGame()
+    expect(JSON.parse(storage.getItem(RECORDS_KEY)!).easy.level).toBe(3)
+    expect(createGameStore(deps()).getState().records.easy?.level).toBe(3)
   })
 
   it('exports and imports a save', () => {

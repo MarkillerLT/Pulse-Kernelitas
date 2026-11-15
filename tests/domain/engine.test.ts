@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { CREW_IDS, type CrewId } from '../../src/domain/content/crew'
 import { MISSION_IDS } from '../../src/domain/content/missions'
-import { JOURNEY_DAYS } from '../../src/domain/content/ship'
 import { createGame } from '../../src/domain/engine/createGame'
 import { assignTask, orderCrew, previewAssignment } from '../../src/domain/engine/commands'
 import { advanceHours } from '../../src/domain/engine/tick'
@@ -10,6 +9,12 @@ import { gameStateSchema, type GameState } from '../../src/domain/model/game'
 import type { Stats } from '../../src/domain/model/stats'
 import { taskChance } from '../../src/domain/rules/chance'
 import { hourlyDrift, sleepShiftGain } from '../../src/domain/rules/drift'
+import {
+  LEVEL_HOURS,
+  levelScaling,
+  showsOptimalTeam,
+  tierOf,
+} from '../../src/domain/rules/difficulty'
 
 const NOW = '2026-11-14T12:00:00.000Z'
 const newGame = (seed = 1) => createGame({ now: NOW, seed, firstTask: false })
@@ -140,11 +145,12 @@ describe('clock', () => {
     expect(state.log.some((l) => l.title === 'Sin respuesta: El motor se incendia')).toBe(true)
   })
 
-  it('wins after surviving the journey', () => {
+  it('is endless: surviving past day 30 does not end the game', () => {
     let state = newGame()
-    state = { ...state, hour: JOURNEY_DAYS * 24 - 1 }
+    state = { ...state, hour: 30 * 24 - 1 }
+    state.difficulty.level = 20
     const result = advanceHours(state, 1)
-    expect(result.state.status).toBe('won')
+    expect(result.state.status).toBe('active')
   })
 
   it('loses when life support collapses', () => {
@@ -332,5 +338,86 @@ describe('chance formula', () => {
       trust: 1,
     })
     expect(taskChance(wrecked, 0.1, 'technical', ['kai']).chance).toBe(0.05)
+  })
+})
+
+describe('progressive difficulty', () => {
+  it('each mode starts at its level and the level rises with game time', () => {
+    expect(createGame({ now: NOW, mode: 'easy' }).difficulty.level).toBe(1)
+    expect(createGame({ now: NOW, mode: 'medium' }).difficulty.level).toBe(5)
+    expect(createGame({ now: NOW, mode: 'hard' }).difficulty.level).toBe(10)
+    const game = newGame()
+    const before = advanceHours(game, LEVEL_HOURS - 1).state
+    expect(before.difficulty.level).toBe(1)
+    const after = advanceHours(before, 1)
+    expect(after.state.difficulty.level).toBe(2)
+    expect(after.notes.some((n) => n.text.startsWith('Nivel 2'))).toBe(true)
+  })
+
+  it('tiers: 1–4 Fácil, 5–9 Medio, 10+ Difícil, and entering a new phase pauses', () => {
+    expect([1, 4, 5, 9, 10, 25].map(tierOf)).toEqual([
+      'easy',
+      'easy',
+      'medium',
+      'medium',
+      'hard',
+      'hard',
+    ])
+    const game = createGame({ now: NOW, seed: 1, firstTask: false, mode: 'easy' })
+    game.hour = 8 + LEVEL_HOURS * 4 - 1
+    game.difficulty.level = 4
+    const result = advanceHours(game, 1)
+    expect(result.state.difficulty.level).toBe(5)
+    expect(result.notes.some((n) => n.pause && /fase Medio/.test(n.text))).toBe(true)
+  })
+
+  it('higher levels drain more energy and food, independent of clock speed', () => {
+    const drain = (level: number) => {
+      const game = newGame()
+      game.difficulty.level = level
+      game.crew.lyra.activity = 'rest'
+      game.crew.kai.activity = 'rest'
+      const after = advanceHours(game, 10).state
+      return {
+        power: game.ship.power - after.ship.power,
+        food: game.ship.food - after.ship.food,
+      }
+    }
+    const low = drain(1)
+    const high = drain(10)
+    expect(high.power).toBeGreaterThan(low.power * 1.8)
+    expect(high.food).toBeGreaterThan(low.food)
+    expect(levelScaling(10).eventChance).toBeGreaterThan(levelScaling(1).eventChance * 2)
+  })
+
+  it('tasks and missions take longer at higher levels', () => {
+    const [game, taskId] = withEvent(newGame(), 'air-filters')
+    const low = previewAssignment(game, { taskId, optionId: 'replace', crewIds: ['lyra'] })
+    game.difficulty.level = 12
+    const high = previewAssignment(game, { taskId, optionId: 'replace', crewIds: ['lyra'] })
+    expect(high.option!.durationHours).toBeGreaterThan(low.option!.durationHours)
+  })
+
+  it('recurring expeditions appear from level 3 and do not touch story missions', () => {
+    const game = newGame()
+    game.difficulty.level = 3
+    game.hour = 40
+    game.nextMissionAt = 41
+    const { state, notes } = advanceHours(game, 1)
+    const expedition = state.tasks.find((t) => t.kind === 'mission' && t.recurring)!
+    expect(expedition.title).toMatch(/^Expedición: /)
+    expect(notes.some((n) => n.text.startsWith('Nueva expedición'))).toBe(true)
+    expect(state.missions[expedition.refId]).toBe('pending')
+    expect(state.nextMissionAt).toBeGreaterThan(state.hour)
+    const low = newGame()
+    low.nextMissionAt = 0
+    expect(advanceHours(low, 5).state.tasks.some((t) => t.recurring)).toBe(false)
+  })
+
+  it('reveals the optimal team by phase: always, only critical tasks, never', () => {
+    expect(showsOptimalTeam(2, 'routine')).toBe(true)
+    expect(showsOptimalTeam(6, 'routine')).toBe(false)
+    expect(showsOptimalTeam(6, 'critical')).toBe(true)
+    expect(showsOptimalTeam(11, 'critical')).toBe(false)
   })
 })

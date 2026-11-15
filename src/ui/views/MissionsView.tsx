@@ -3,6 +3,7 @@ import { CREW, firstName } from '../../domain/content/crew'
 import { MISSION_LIST } from '../../domain/content/missions'
 import { SECTORS } from '../../domain/content/sectors'
 import type { MissionStatus } from '../../domain/model/game'
+import { showsOptimalTeam } from '../../domain/rules/difficulty'
 import { useGame } from '../../store/gameStore'
 import { CrewSprite } from '../components/CrewSprite'
 import { PageHeader } from '../components/PageHeader'
@@ -19,11 +20,13 @@ const STATUS: Record<MissionStatus, { label: string; tag: string }> = {
 
 export function MissionsView() {
   const game = useGame((s) => s.game)
+  const hints = showsOptimalTeam(game.difficulty.level, 'critical')
   return (
     <div className="page">
       <PageHeader eyebrow="Bitácora del viaje" title="Misiones">
         Cinco hitos del viaje. Cada misión aparece en la lista de tareas del Puente el día indicado,
-        a las 09:00, y hay 24 horas para enviar un equipo.
+        a las 09:00. Desde el nivel 3 también llegan expediciones recurrentes, cada vez más seguidas
+        y a cualquier hora.
       </PageHeader>
       <ol className="mission-list">
         {MISSION_LIST.map((mission) => {
@@ -56,34 +59,38 @@ export function MissionsView() {
                   <h3 className="subhead">
                     {mission.routes.length > 1 ? 'Rutas' : 'Equipo óptimo'}
                   </h3>
-                  {mission.routes.map((route) => (
-                    <div key={route.id} className="team-inline">
-                      {mission.routes.length > 1 && (
-                        <span className="mono small">{route.name}</span>
-                      )}
-                      {route.optimalCrew.map((id) => (
-                        <span key={id} className="team-chip" title={CREW[id].name}>
-                          <CrewSprite crewId={id} size="sm" />
-                          {firstName(id)}
-                        </span>
-                      ))}
-                    </div>
-                  ))}
+                  {!hints && <p className="small muted">Oculto en la fase Difícil.</p>}
+                  {hints &&
+                    mission.routes.map((route) => (
+                      <div key={route.id} className="team-inline">
+                        {mission.routes.length > 1 && (
+                          <span className="mono small">{route.name}</span>
+                        )}
+                        {route.optimalCrew.map((id) => (
+                          <span key={id} className="team-chip" title={CREW[id].name}>
+                            <CrewSprite crewId={id} size="sm" />
+                            {firstName(id)}
+                          </span>
+                        ))}
+                      </div>
+                    ))}
                 </div>
               </div>
-              <details className="design-notes">
-                <summary>Penalizaciones por ausencia</summary>
-                <ul className="plain-list small">
-                  {mission.routes.flatMap((route) =>
-                    route.absenceRules.map((rule) => (
-                      <li key={route.id + rule.crewId}>
-                        {mission.routes.length > 1 && `${route.name} · `}Sin{' '}
-                        {firstName(rule.crewId)}: {rule.summary}
-                      </li>
-                    )),
-                  )}
-                </ul>
-              </details>
+              {hints && (
+                <details className="design-notes">
+                  <summary>Penalizaciones por ausencia</summary>
+                  <ul className="plain-list small">
+                    {mission.routes.flatMap((route) =>
+                      route.absenceRules.map((rule) => (
+                        <li key={route.id + rule.crewId}>
+                          {mission.routes.length > 1 && `${route.name} · `}Sin{' '}
+                          {firstName(rule.crewId)}: {rule.summary}
+                        </li>
+                      )),
+                    )}
+                  </ul>
+                </details>
+              )}
               {open && (
                 <Link to="/" className="btn btn-primary">
                   Ir al Puente para asignar equipo

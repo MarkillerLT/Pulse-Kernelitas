@@ -3,10 +3,11 @@ import { CREW_IDS } from '../content/crew'
 import { CONDITIONS } from '../content/conditions'
 import { MISSIONS, MISSION_IDS } from '../content/missions'
 import { SECTOR_IDS } from '../content/sectors'
+import { DIFFICULTY_MODES } from '../rules/difficulty'
 import { statsSchema } from './stats'
 
 /** Bump when the persisted shape changes, and add a migration in persistence/saveGame. */
-export const GAME_SCHEMA_VERSION = 2
+export const GAME_SCHEMA_VERSION = 3
 
 export const crewIdSchema = z.enum(CREW_IDS)
 
@@ -77,6 +78,8 @@ export const taskSchema = z.object({
   deadline: z.number(),
   targetId: crewIdSchema.nullable(),
   attempt: z.number().int().min(1),
+  /** Recurring mission (repeats a story mission's content; does not change its status). */
+  recurring: z.boolean(),
   status: z.enum(['open', 'active']),
   assignment: z
     .object({
@@ -136,7 +139,12 @@ export const gameStateSchema = z
     /** Game clock in hours since the start of day 1 (00:00). */
     hour: z.number().int().min(0),
     rngSeed: z.number().int().min(0).max(0xffffffff),
-    status: z.enum(['active', 'won', 'lost']),
+    /** Chosen mode (sets the starting level) and the current level. */
+    difficulty: z.object({ mode: z.enum(DIFFICULTY_MODES), level: z.number().int().min(1) }),
+    /** Game hour when the next recurring mission may appear. */
+    nextMissionAt: z.number(),
+    /** Endless survival: the game only ends when the ship or the crew is lost. */
+    status: z.enum(['active', 'lost']),
     endReason: z.string().nullable(),
     crew: z.record(crewIdSchema, crewStateSchema),
     ship: shipSchema,

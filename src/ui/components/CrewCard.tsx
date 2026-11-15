@@ -19,7 +19,16 @@ export function AvailabilityTag({ state }: { state: CrewState }) {
   )
 }
 
-export function CrewCard({ crewId, state }: { crewId: CrewId; state: CrewState }) {
+/** `showStats` is off on the crew list: statistics are only shown after opening a member. */
+export function CrewCard({
+  crewId,
+  state,
+  showStats = true,
+}: {
+  crewId: CrewId
+  state: CrewState
+  showStats?: boolean
+}) {
   const crew = CREW[crewId]
   const bounds = getStatBounds(state.conditions)
   const { available } = getAvailability(state)
@@ -33,11 +42,19 @@ export function CrewCard({ crewId, state }: { crewId: CrewId; state: CrewState }
           <AvailabilityTag state={state} />
         </div>
       </div>
-      <div className="crew-card-stats">
-        {STAT_KEYS.map((key) => (
-          <StatMeter key={key} stat={key} value={state.stats[key]} max={bounds[key].max} compact />
-        ))}
-      </div>
+      {showStats && (
+        <div className="crew-card-stats">
+          {STAT_KEYS.map((key) => (
+            <StatMeter
+              key={key}
+              stat={key}
+              value={state.stats[key]}
+              max={bounds[key].max}
+              compact
+            />
+          ))}
+        </div>
+      )}
     </Link>
   )
 }

@@ -4,6 +4,7 @@ import { MAX_TEAM_SIZE, getMission, getRoute } from '../content/missions'
 import type { GameState, Task } from '../model/game'
 import { getAvailability, getWorkWarnings, type Warning } from '../rules/availability'
 import { missionChance, taskChance, worstFactor, type ChanceResult } from '../rules/chance'
+import { scaledDuration } from '../rules/difficulty'
 import { LEISURE_HOURS, SHIFT_HOURS } from '../rules/drift'
 import { missionComposition, type MissionComposition } from './composition'
 import { resolveEventTask } from './resolve'
@@ -44,7 +45,9 @@ export interface AssignmentPreview {
   composition: MissionComposition | null
 }
 
-function optionInfo(task: Task, optionId: string): OptionInfo | null {
+/** Option details at the current level (durations grow with the level). */
+function optionInfo(state: GameState, task: Task, optionId: string): OptionInfo | null {
+  const level = state.difficulty.level
   if (task.kind === 'request') {
     const opt = REQUEST_OPTIONS.find((o) => o.id === optionId)
     return opt
@@ -60,7 +63,7 @@ function optionInfo(task: Task, optionId: string): OptionInfo | null {
           kind: 'mission',
           minCrew: 1,
           maxCrew: MAX_TEAM_SIZE,
-          durationHours: mission.durationHours,
+          durationHours: scaledDuration(mission.durationHours, level),
         }
       : null
   }
@@ -71,7 +74,7 @@ function optionInfo(task: Task, optionId: string): OptionInfo | null {
     kind: option.kind,
     minCrew: option.kind === 'auto' ? 0 : (option.minCrew ?? 1),
     maxCrew: option.kind === 'auto' ? 0 : (option.maxCrew ?? 2),
-    durationHours: option.durationHours,
+    durationHours: scaledDuration(option.durationHours, level),
   }
 }
 
@@ -98,7 +101,7 @@ export function previewAssignment(state: GameState, order: AssignOrder): Assignm
     return empty
   }
   if (task.status !== 'open') errors.push('La tarea ya está en curso.')
-  const option = optionInfo(task, order.optionId)
+  const option = optionInfo(state, task, order.optionId)
   if (!option) {
     errors.push('Opción no válida.')
     return empty
@@ -210,7 +213,7 @@ export function assignTask(state: GameState, order: AssignOrder): CommandResult 
     crew.taskId = task.id
     crew.activityUntil = task.assignment.endsAt
   }
-  if (task.kind === 'mission') draft.missions[task.refId] = 'active'
+  if (task.kind === 'mission' && !task.recurring) draft.missions[task.refId] = 'active'
   const who = crewIds.length ? crewIds.map((id) => CREW[id].name).join(', ') : 'N0VA-7'
   addLog(draft, {
     kind: task.kind === 'mission' ? 'mission' : 'task',

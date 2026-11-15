@@ -9,11 +9,12 @@ export function CrewView() {
   return (
     <div className="page">
       <PageHeader eyebrow="Monitores de la tripulación" title="Tripulación">
-        Cinco vidas bajo la supervisión de N0VA-7. Selecciona un tripulante para abrir su ficha.
+        Cinco vidas bajo la supervisión de N0VA-7. Las estadísticas solo se ven al abrir la ficha de
+        cada tripulante.
       </PageHeader>
       <div className="crew-grid">
         {CREW_IDS.map((id) => (
-          <CrewCard key={id} crewId={id} state={crew[id]} />
+          <CrewCard key={id} crewId={id} state={crew[id]} showStats={false} />
         ))}
       </div>
       <dl className="legend">

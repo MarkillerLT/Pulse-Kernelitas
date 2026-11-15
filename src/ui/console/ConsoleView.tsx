@@ -7,8 +7,8 @@ import { DIRECT_ORDERS, type DirectOrder } from '../../domain/engine/commands'
 import type { Task } from '../../domain/model/game'
 import { STAT_KEYS } from '../../domain/model/stats'
 import { getWorkWarnings } from '../../domain/rules/availability'
+import { MODE_INFO, levelProgress, levelScaling, tierOf } from '../../domain/rules/difficulty'
 import { gameStore, useGame, type Speed } from '../../store/gameStore'
-import { ConfirmDialog } from '../components/ConfirmDialog'
 import { CrewSprite } from '../components/CrewSprite'
 import { Panel } from '../components/Panel'
 import { StatMeter } from '../components/StatMeter'
@@ -23,7 +23,8 @@ export function ConsoleView() {
   const game = useGame((s) => s.game)
   const speed = useGame((s) => s.speed)
   const setSpeed = useGame((s) => s.setSpeed)
-  const resetGame = useGame((s) => s.resetGame)
+  const openSetup = useGame((s) => s.openSetup)
+  const records = useGame((s) => s.records)
   const [selectedId, setSelectedId] = useState<CrewId | null>(null)
   const [choice, setChoice] = useState<{ task: Task; optionId: string } | null>(null)
   const resumeSpeed = useRef<Speed>(0)
@@ -86,6 +87,7 @@ export function ConsoleView() {
             {speed === 0 ? 'Tiempo detenido. Espacio para reanudar.' : 'El tiempo corre.'}
           </span>
         </div>
+        <LevelMeter level={game.difficulty.level} hour={game.hour} mode={game.difficulty.mode} />
         <dl className="systems">
           {SHIP_KEYS.map((key) => {
             const value = Math.round(game.ship[key])
@@ -115,7 +117,8 @@ export function ConsoleView() {
             reducedMotion={game.settings.reducedMotion}
           />
           <p className="small muted map-hint">
-            Los tripulantes se mueven solos según su actividad. Selecciona a uno para darle órdenes.
+            Los tripulantes se mueven solos según su actividad. Pulsa uno para ver sus estadísticas
+            y darle órdenes.
           </p>
         </section>
         <Panel title="Tareas de N0VA-7" code={`${openTasks}`} className="task-panel">
@@ -156,12 +159,18 @@ export function ConsoleView() {
         <div className="end-overlay" role="dialog" aria-modal="true" aria-labelledby="end-title">
           <div className="end-card">
             <span className="eyebrow">
-              {game.status === 'won' ? 'Destino alcanzado' : 'Fin de la misión'}
+              Fin del viaje · modo {MODE_INFO[game.difficulty.mode].label}
             </span>
             <h2 id="end-title">
-              {game.status === 'won' ? 'La Elysium llegó a su destino' : 'La Elysium se ha perdido'}
+              Nivel {game.difficulty.level} · Día {Math.floor(game.hour / 24) + 1}
             </h2>
             <p>{game.endReason}</p>
+            {records[game.difficulty.mode] && (
+              <p className="small muted">
+                Récord en {MODE_INFO[game.difficulty.mode].label}: nivel{' '}
+                {records[game.difficulty.mode]!.level}, día {records[game.difficulty.mode]!.day}.
+              </p>
+            )}
             <ul className="end-crew">
               {CREW_IDS.map((id) => (
                 <li key={id}>
@@ -176,17 +185,9 @@ export function ConsoleView() {
               ))}
             </ul>
             <div className="button-row">
-              <ConfirmDialog
-                trigger={
-                  <button type="button" className="btn btn-primary">
-                    <RotateCcw size={14} aria-hidden="true" /> Nueva partida
-                  </button>
-                }
-                title="¿Iniciar una nueva partida?"
-                description="Se borrará la partida actual."
-                confirmLabel="Nueva partida"
-                onConfirm={resetGame}
-              />
+              <button type="button" className="btn btn-primary" onClick={() => openSetup(true)}>
+                <RotateCcw size={14} aria-hidden="true" /> Nueva partida
+              </button>
               <Link to="/log" className="btn">
                 Ver historial
               </Link>
@@ -203,7 +204,7 @@ function CrewBoard({
   onSelect,
 }: {
   selectedId: CrewId | null
-  onSelect: (id: CrewId) => void
+  onSelect: (id: CrewId | null) => void
 }) {
   const game = useGame((s) => s.game)
   const order = useGame((s) => s.order)
@@ -218,7 +219,7 @@ function CrewBoard({
         const crew = game.crew[id]
         const dead = crew.activity === 'dead'
         const selected = selectedId === id
-        const warnings = dead ? [] : getWorkWarnings(crew)
+        const warnings = dead || !selected ? [] : getWorkWarnings(crew)
         const busy = crew.activity === 'task' || crew.activity === 'mission'
         return (
           <article
@@ -228,7 +229,7 @@ function CrewBoard({
             <button
               type="button"
               className="crew-tile-head"
-              onClick={() => onSelect(id)}
+              onClick={() => onSelect(selected ? null : id)}
               aria-pressed={selected}
               aria-label={`Seleccionar a ${CREW[id].name}`}
             >
@@ -239,7 +240,7 @@ function CrewBoard({
                 <span className={`tag act-${crew.activity}`}>{ACTIVITY_LABELS[crew.activity]}</span>
               </span>
             </button>
-            {!dead && (
+            {selected && !dead && (
               <div className="crew-tile-stats">
                 {STAT_KEYS.map((key) => (
                   <StatMeter key={key} stat={key} value={crew.stats[key]} compact />
@@ -284,5 +285,35 @@ function CrewBoard({
         )
       })}
     </section>
+  )
+}
+
+/** Tetris-style level indicator: current level, phase and progress to the next one. */
+function LevelMeter({
+  level,
+  hour,
+  mode,
+}: {
+  level: number
+  hour: number
+  mode: 'easy' | 'medium' | 'hard'
+}) {
+  const tier = tierOf(level)
+  const scaling = levelScaling(level)
+  const progress = Math.round(levelProgress(hour) * 100)
+  return (
+    <div className={`level-meter tier-${tier}`} aria-label={`Nivel ${level}`}>
+      <span className="eyebrow">
+        Modo {MODE_INFO[mode].label} · fase {MODE_INFO[tier].label}
+      </span>
+      <strong className="level-value">Nivel {level}</strong>
+      <span className="system-bar" aria-hidden="true">
+        <i style={{ width: `${progress}%` }} />
+      </span>
+      <span className="small muted">
+        Energía ×{scaling.power.toFixed(2)} · tareas +{Math.round((scaling.duration - 1) * 100)}%
+        {scaling.missionInterval ? ` · expediciones ~${scaling.missionInterval} h` : ''}
+      </span>
+    </div>
   )
 }

@@ -1,12 +1,12 @@
 # Diseño de juego — RPG de decisiones
 
-N0VA-7 supervisa un viaje de **30 días**. El tiempo corre en tiempo real (1 hora de juego = 2 s a 1×)
+N0VA-7 supervisa un viaje **sin final**: el objetivo es sobrevivir lo más lejos posible. El tiempo corre en tiempo real (1 hora de juego = 2 s a 1×)
 y se pausa solo cuando hace falta decidir. El jugador no mueve a los astronautas: decide qué hacen,
 y ellos caminan solos por la nave hacia su sector.
 
 ## Bucle
 
-1. Vigilar: estadísticas de la tripulación y sistemas de la nave.
+1. Vigilar: sistemas de la nave siempre visibles; las estadísticas de un tripulante solo al pulsarlo.
 2. Surgen tareas con plazo (eventos, solicitudes y misiones). Las críticas y urgentes pausan el juego.
 3. Decidir: opción + equipo. Se muestra la probabilidad de éxito con su desglose.
 4. Advertencias: Estrés ≥ 76, Sueño ≤ 24 o Salud ≤ 24 → "Mandar de igual forma" (Confianza −5).
@@ -75,4 +75,27 @@ Aparecen el día indicado a las 09:00 y hay 24 h para enviar un equipo (1–3 tr
 
 ## Equilibrio
 
-`tests/domain/balance.test.ts` juega partidas completas: un N0VA-7 pasivo pierde siempre (días 7–17) y uno competente suele llegar al destino.
+`tests/domain/balance.test.ts` juega partidas completas: un N0VA-7 pasivo pierde pronto, uno
+competente llega a la fase Media, y los modos más difíciles terminan antes. Con el bot de prueba:
+Fácil ≈ días 13–20 (nivel 8–14), Medio ≈ días 11–14, Difícil ≈ días 7–10.
+
+## Dificultad progresiva (tipo Tetris)
+
+El nivel sube cada **36 horas de juego** (no depende de la velocidad del reloj). El modo elegido al
+empezar fija el nivel inicial; la fase del nivel actual decide cuánta ayuda da N0VA-7.
+
+| Modo / fase | Niveles | Nivel inicial | Ayuda |
+| --- | --- | --- | --- |
+| Fácil (inicial) | 1–4 | 1 | Recomienda el equipo óptimo en todas las tareas |
+| Medio (intermedio) | 5–9 | 5 | Solo en tareas críticas y misiones (las de más desgaste) |
+| Difícil (avanzado) | 10+ | 10 | Solo la probabilidad; sin equipo óptimo ni penalizaciones por ausencia |
+
+Cada nivel (s = nivel − 1), definido en `src/domain/rules/difficulty.ts`:
+
+- Consumo de energía ×(1 + 0,12·s), comida ×(1 + 0,07·s).
+- Probabilidad de evento por hora 4,5% + 0,9%·s; hasta 3 + s/3 eventos abiertos (máx. 6); enfriamientos ÷(1 + 0,08·s).
+- Duración de tareas y misiones ×(1 + 0,06·s); plazos para responder ×(1 − 0,03·s) (mín. 60%).
+- Descoordinación de sueño: de noche (22–06) los eventos pesan 0,5 + 0,12·s (menos al principio, más que de día desde el nivel 6).
+- Expediciones recurrentes desde el nivel 3, cada ~72 − 5·(nivel − 3) h (mín. 20 h), a cualquier hora; dos simultáneas desde el nivel 10. Repiten ruta, coste y recompensa de una misión de la historia sin cambiar su estado.
+
+Al perder se guarda el récord (nivel y día) por modo en `elysium.records`.

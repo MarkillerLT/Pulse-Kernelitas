@@ -1,4 +1,11 @@
+import { START_HOUR } from '../domain/content/ship'
 import { GAME_SCHEMA_VERSION, gameStateSchema, type GameState } from '../domain/model/game'
+import {
+  DIFFICULTY_MODES,
+  MODE_INFO,
+  levelAt,
+  type DifficultyMode,
+} from '../domain/rules/difficulty'
 
 /**
  * Local persistence in localStorage.
@@ -31,11 +38,26 @@ export type LoadResult =
   | { status: 'ok'; state: GameState }
   | { status: 'invalid'; reason: string; backedUp: boolean }
 
+type Draft = Record<string, unknown>
+
 /**
- * Upgrades older envelopes to the current schema. Add one entry per version bump:
- * `{ 1: (state) => upgradedToV2 }`. Empty while only version 1 exists.
+ * Upgrades older envelopes to the current schema, one entry per version bump.
+ * v2 → v3: endless survival with difficulty levels. Old games continue in Fácil at the level
+ * their elapsed time corresponds to; a finished 30-day journey is kept as ended.
  */
-const MIGRATIONS: Record<number, (state: unknown) => unknown> = {}
+const MIGRATIONS: Record<number, (state: unknown) => unknown> = {
+  2: (raw) => {
+    const state = { ...(raw as Draft) }
+    const hour = typeof state.hour === 'number' ? state.hour : START_HOUR
+    state.schemaVersion = 3
+    state.difficulty = { mode: 'easy', level: levelAt(MODE_INFO.easy.startLevel, hour) }
+    state.nextMissionAt = hour + 24
+    if (state.status === 'won') state.status = 'lost'
+    if (Array.isArray(state.tasks))
+      state.tasks = state.tasks.map((t: Draft) => ({ ...t, recurring: false }))
+    return state
+  },
+}
 
 export function getBrowserStorage(): StorageLike | null {
   try {
@@ -118,4 +140,48 @@ export function saveGame(storage: StorageLike, state: GameState, savedAt: string
 
 export function clearSave(storage: StorageLike): void {
   storage.removeItem(SAVE_KEY)
+}
+
+/** Best run per mode, kept apart from the save so starting a new game does not erase it. */
+export const RECORDS_KEY = 'elysium.records'
+
+export interface RunRecord {
+  level: number
+  day: number
+}
+export type Records = Partial<Record<DifficultyMode, RunRecord>>
+
+export function loadRecords(storage: StorageLike | null): Records {
+  if (!storage) return {}
+  try {
+    const data = JSON.parse(storage.getItem(RECORDS_KEY) ?? '{}') as Record<string, unknown>
+    const records: Records = {}
+    for (const mode of DIFFICULTY_MODES) {
+      const r = data[mode] as Partial<RunRecord> | undefined
+      if (r && Number.isInteger(r.level) && Number.isInteger(r.day))
+        records[mode] = { level: r.level!, day: r.day! }
+    }
+    return records
+  } catch {
+    return {}
+  }
+}
+
+/** Stores `run` if it beats the mode's record. Returns the updated records. */
+export function saveRecord(
+  storage: StorageLike | null,
+  records: Records,
+  mode: DifficultyMode,
+  run: RunRecord,
+): Records {
+  const best = records[mode]
+  if (best && (best.level > run.level || (best.level === run.level && best.day >= run.day)))
+    return records
+  const next = { ...records, [mode]: run }
+  try {
+    storage?.setItem(RECORDS_KEY, JSON.stringify(next))
+  } catch {
+    // Records are a convenience: losing one must not interrupt the game.
+  }
+  return next
 }

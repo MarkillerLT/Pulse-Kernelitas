@@ -17,7 +17,7 @@ function setGame(mutate: (g: GameState) => void = () => {}) {
   const game = createGame({ now: '2026-11-14T12:00:00.000Z', seed: 11 })
   game.settings.reducedMotion = true
   mutate(game)
-  gameStore.setState({ game, speed: 0, notices: [], elapsedMs: 0 })
+  gameStore.setState({ game, speed: 0, notices: [], elapsedMs: 0, setupOpen: false })
 }
 
 beforeEach(() => setGame())
@@ -96,6 +96,53 @@ describe('bridge console', () => {
     expect(gameStore.getState().game.crew.kai.activity).toBe('leisure')
   })
 
+  it("shows a member's statistics only after pressing them", async () => {
+    const user = userEvent.setup()
+    renderAt()
+    const board = screen.getByRole('region', { name: 'Tripulación' })
+    expect(within(board).queryAllByText('Estrés')).toHaveLength(0)
+    await user.click(screen.getByRole('button', { name: 'Seleccionar a Kai Verdant' }))
+    expect(within(board).getAllByText('Estrés')).toHaveLength(1)
+  })
+
+  it('Fácil recommends the best specialist; Difícil only shows the chance', async () => {
+    const user = userEvent.setup()
+    renderAt()
+    await user.click(screen.getByRole('button', { name: 'Reemplazar filtros' }))
+    let dialog = await screen.findByRole('dialog')
+    const lyra = within(dialog).getByRole('button', { name: 'Asignar a Lyra Kess' })
+    expect(within(lyra).getByText('Recomendado')).toBeInTheDocument()
+    await user.click(within(dialog).getByRole('button', { name: 'Cerrar' }))
+    cleanup()
+
+    setGame((g) => {
+      g.difficulty = { mode: 'hard', level: 10 }
+      spawnMissionTask(g, 'ghost-satellite', 1)
+    })
+    renderAt()
+    await user.click(screen.getByRole('button', { name: /Preparar equipo/ }))
+    dialog = await screen.findByRole('dialog')
+    expect(
+      within(dialog).queryByText('Equipo óptimo', { selector: '.tag' }),
+    ).not.toBeInTheDocument()
+    expect(within(dialog).getByText(/Oculto en la fase Difícil/)).toBeInTheDocument()
+    await user.click(within(dialog).getByRole('button', { name: 'Asignar a Zara Void' }))
+    expect(within(dialog).getByText('Probabilidad de éxito')).toBeInTheDocument()
+    expect(within(dialog).queryByText(/^Sin (Orion|Lyra|Kai|Elias)/)).not.toBeInTheDocument()
+    expect(within(dialog).getAllByText('Falta un especialista clave').length).toBeGreaterThan(0)
+  })
+
+  it('shows the level and the new-game mode picker', async () => {
+    const user = userEvent.setup()
+    renderAt()
+    expect(screen.getByText('Nivel 1', { selector: '.level-value' })).toBeInTheDocument()
+    gameStore.getState().openSetup(true)
+    const picker = await screen.findByRole('dialog', { name: 'Elige la dificultad' })
+    await user.click(within(picker).getByRole('radio', { name: /Medio/ }))
+    await user.click(within(picker).getByRole('button', { name: /Comenzar en modo Medio/ }))
+    expect(gameStore.getState().game.difficulty).toEqual({ mode: 'medium', level: 5 })
+  })
+
   it('pauses and runs the clock', async () => {
     const user = userEvent.setup()
     renderAt()
@@ -129,8 +176,8 @@ describe('other views', () => {
     gameStore.getState().tick(10_000)
     const user = userEvent.setup()
     renderAt('/system')
-    await user.click(screen.getByRole('button', { name: /Reiniciar partida/ }))
-    await user.click(await screen.findByRole('button', { name: 'Reiniciar' }))
+    await user.click(screen.getByRole('button', { name: /Nueva partida/ }))
+    await user.click(await screen.findByRole('button', { name: /Comenzar en modo/ }))
     expect(gameStore.getState().game.hour).toBe(8)
   })
 })

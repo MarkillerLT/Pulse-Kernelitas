@@ -1,10 +1,17 @@
 import { CREW, type CrewId } from '../content/crew'
-import { JOURNEY_DAYS, NIGHT_END, NIGHT_START } from '../content/ship'
+import { NIGHT_END, NIGHT_START } from '../content/ship'
+import { MODE_INFO, levelAt, levelScaling, levelUpText, tierOf } from '../rules/difficulty'
 import type { GameState } from '../model/game'
 import { getStatBounds } from '../rules/stats'
 import { MEDICINE_PER_HOUR, hourlyDrift } from '../rules/drift'
 import { expireTask, killCrew, resolveEventTask, resolveMissionTask } from './resolve'
-import { rollRandomEvent, spawnMissions, spawnRequests, type Note } from './spawn'
+import {
+  rollRandomEvent,
+  spawnMissions,
+  spawnRecurringMission,
+  spawnRequests,
+  type Note,
+} from './spawn'
 import {
   addCondition,
   addLog,
@@ -55,6 +62,8 @@ function advanceOneHour(state: GameState, notes: Note[]) {
   state.hour += 1
   const hour = state.hour
   const time = hourOfDay(hour)
+  updateLevel(state, notes)
+  const scaling = levelScaling(state.difficulty.level)
 
   // 1. Stat drift by activity.
   for (const id of aliveCrew(state)) {
@@ -72,7 +81,10 @@ function advanceOneHour(state: GameState, notes: Note[]) {
 
   // 2. Ship upkeep.
   const alive = aliveCrew(state)
-  changeShip(state, { food: -alive.length * FOOD_PER_CREW_PER_HOUR, power: -POWER_DRAIN_PER_HOUR })
+  changeShip(state, {
+    food: -alive.length * FOOD_PER_CREW_PER_HOUR * scaling.food,
+    power: -POWER_DRAIN_PER_HOUR * scaling.power,
+  })
   if (state.crew.kai.activity === 'duty') changeShip(state, { food: GREENHOUSE_PER_HOUR })
   if (state.crew.lyra.activity === 'duty') changeShip(state, { power: ENGINEERING_PER_HOUR })
   if (state.ship.power < 25) changeShip(state, { lifeSupport: -0.5 })
@@ -94,11 +106,28 @@ function advanceOneHour(state: GameState, notes: Note[]) {
 
   // 6. New decisions.
   spawnMissions(state, notes)
+  spawnRecurringMission(state, notes)
   rollRandomEvent(state, notes)
   spawnRequests(state, notes)
 
   // 7. End of the game.
   checkEnd(state, notes)
+}
+
+/** Raises the level every LEVEL_HOURS of game time (never with the clock speed). */
+function updateLevel(state: GameState, notes: Note[]) {
+  const level = levelAt(MODE_INFO[state.difficulty.mode].startLevel, state.hour)
+  if (level <= state.difficulty.level) return
+  const before = tierOf(state.difficulty.level)
+  state.difficulty.level = level
+  const tier = tierOf(level)
+  const tierText =
+    tier !== before
+      ? ` Entras en la fase ${MODE_INFO[tier].label} (${MODE_INFO[tier].tierLabel}).`
+      : ''
+  const text = `Nivel ${level}: ${levelUpText(level)}.${tierText}`
+  addLog(state, { kind: 'system', severity: 'warning', title: `Nivel ${level}`, text })
+  notes.push({ severity: 'warning', text, pause: tier !== before })
 }
 
 function updateCrew(state: GameState, id: CrewId, time: number, notes: Note[]) {
@@ -225,7 +254,7 @@ function dailyUpdate(state: GameState, notes: Note[]) {
   addLog(state, {
     kind: 'system',
     severity: 'info',
-    title: `Día ${dayOf(state.hour)} de ${JOURNEY_DAYS}`,
+    title: `Día ${dayOf(state.hour)} · nivel ${state.difficulty.level}`,
     text:
       state.ship.food <= 0
         ? 'Sin comida: la tripulación pasa hambre.'
@@ -238,23 +267,13 @@ function dailyUpdate(state: GameState, notes: Note[]) {
 
 function checkEnd(state: GameState, notes: Note[]) {
   let reason: string | null = null
-  let status: GameState['status'] = 'active'
   if (aliveCrew(state).length === 0) reason = 'No quedan tripulantes con vida.'
   else if (state.ship.lifeSupport <= 0) reason = 'El soporte vital colapsó.'
   else if (state.ship.hull <= 0) reason = 'El casco cedió.'
-  if (reason) status = 'lost'
-  else if (state.hour >= JOURNEY_DAYS * 24) {
-    status = 'won'
-    reason = `La Elysium llegó a su destino con ${aliveCrew(state).length} de 5 tripulantes.`
-  }
-  if (status === 'active') return
-  state.status = status
+  if (!reason) return
+  reason += ` La Elysium resistió hasta el día ${dayOf(state.hour)}, nivel ${state.difficulty.level}.`
+  state.status = 'lost'
   state.endReason = reason
-  addLog(state, {
-    kind: 'system',
-    severity: status === 'won' ? 'success' : 'critical',
-    title: status === 'won' ? 'Destino alcanzado' : 'Misión perdida',
-    text: reason!,
-  })
-  notes.push({ severity: status === 'won' ? 'success' : 'critical', text: reason!, pause: true })
+  addLog(state, { kind: 'system', severity: 'critical', title: 'Fin del viaje', text: reason })
+  notes.push({ severity: 'critical', text: reason, pause: true })
 }

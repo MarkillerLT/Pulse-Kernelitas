@@ -8,6 +8,11 @@ test('decision loop runs in real time, survives a reload and can be reset', asyn
   await page.goto('/')
   await page.evaluate(() => localStorage.clear())
   await page.reload()
+  // First launch: pick the difficulty.
+  const picker = page.getByRole('dialog', { name: 'Elige la dificultad' })
+  await picker.getByRole('radio', { name: /Fácil/ }).click()
+  await picker.getByRole('button', { name: /Comenzar en modo Fácil/ }).click()
+  await expect(page.locator('.level-value')).toHaveText('Nivel 1')
   await expect(page.locator('.clock-time')).toHaveText('Día 1 · 08:00')
   await expect(page.getByRole('img', { name: /Plano de la nave Elysium/ })).toBeVisible()
   await expect(page.locator('.walker')).toHaveCount(5)
@@ -37,10 +42,12 @@ test('decision loop runs in real time, survives a reload and can be reset', asyn
 
   // Reset.
   await page.goto('/system')
-  await page.getByRole('button', { name: /Reiniciar partida/ }).click()
-  await page.getByRole('button', { name: 'Reiniciar', exact: true }).click()
+  await page.getByRole('button', { name: /Nueva partida/ }).click()
+  await page.getByRole('radio', { name: /Difícil/ }).click()
+  await page.getByRole('button', { name: /Comenzar en modo Difícil/ }).click()
   await page.goto('/')
   await expect(page.locator('.clock-time')).toHaveText('Día 1 · 08:00')
+  await expect(page.locator('.level-value')).toHaveText('Nivel 10')
 
   expect(errors).toEqual([])
 })

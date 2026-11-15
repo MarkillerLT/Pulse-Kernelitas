@@ -3,7 +3,9 @@ import { NavLink, Outlet, useLocation } from 'react-router'
 import { Cpu, Map, Monitor, Rocket, ScrollText, Settings, Users, X } from 'lucide-react'
 import { CREW_IDS } from '../domain/content/crew'
 import { gameStore, useGame, type Notice } from '../store/gameStore'
+import { MODE_INFO, tierOf } from '../domain/rules/difficulty'
 import { formatClock } from './activity'
+import { NewGameDialog } from './components/NewGameDialog'
 
 const NAV = [
   { to: '/', label: 'Puente', icon: Monitor, end: true },
@@ -88,6 +90,12 @@ export function AppShell() {
             </dd>
           </div>
           <div>
+            <dt>Nivel</dt>
+            <dd>
+              {game.difficulty.level} · {MODE_INFO[tierOf(game.difficulty.level)].label}
+            </dd>
+          </div>
+          <div>
             <dt>Tripulación</dt>
             <dd className={alive < CREW_IDS.length ? 'text-critical' : undefined}>
               {alive}/{CREW_IDS.length}
@@ -116,6 +124,7 @@ export function AppShell() {
       <main id="main-content" tabIndex={-1}>
         <Outlet />
       </main>
+      <NewGameDialog />
       <div className="toasts" aria-live="polite">
         {notices.map((notice) => (
           <Toast key={notice.id} notice={notice} />

@@ -1,7 +1,14 @@
 import { useState } from 'react'
 import * as Dialog from '@radix-ui/react-dialog'
 import { Check, Shuffle, TriangleAlert, X } from 'lucide-react'
-import { CREW, CREW_IDS, SPECIALTY_LABELS, firstName, type CrewId } from '../../domain/content/crew'
+import {
+  CREW,
+  CREW_IDS,
+  SPECIALTY_LABELS,
+  firstName,
+  type CrewId,
+  type SpecialtyKey,
+} from '../../domain/content/crew'
 import { getEvent } from '../../domain/content/events'
 import { getMission } from '../../domain/content/missions'
 import { previewAssignment } from '../../domain/engine/commands'
@@ -9,6 +16,7 @@ import { fillText } from '../../domain/engine/state'
 import type { Task } from '../../domain/model/game'
 import { STAT_KEYS } from '../../domain/model/stats'
 import { getAvailability } from '../../domain/rules/availability'
+import { MODE_INFO, showsOptimalTeam, tierOf } from '../../domain/rules/difficulty'
 import { useGame } from '../../store/gameStore'
 import { CrewSprite } from '../components/CrewSprite'
 import { StatMeter } from '../components/StatMeter'
@@ -45,6 +53,23 @@ export function AssignDialog({ task, optionId: initialOption, onClose }: Props) 
   const forced = preview.warnings.length > 0
   const specialty = eventOption?.specialty
   const blocking = preview.errors.filter((e) => !(selected.length === 0 && /al menos/.test(e)))
+  // Difficulty: Fácil always reveals the optimal team, Medio only on critical tasks and
+  // missions, Difícil never (the success chance is always visible).
+  const hints = showsOptimalTeam(game.difficulty.level, task.severity)
+  const phase = MODE_INFO[tierOf(game.difficulty.level)].label
+  const recommendedIds: CrewId[] = !hints
+    ? []
+    : route
+      ? route.optimalCrew
+      : specialty
+        ? bestBySpecialty(
+            CREW_IDS.filter((id) => getAvailability(game.crew[id]).available),
+            specialty,
+            option?.minCrew ?? 1,
+          )
+        : []
+  const factorLabel = (label: string) =>
+    !hints && label.startsWith('Sin ') ? 'Falta un especialista clave' : label
 
   const toggle = (id: CrewId) => {
     setErrors([])
@@ -101,11 +126,16 @@ export function AssignDialog({ task, optionId: initialOption, onClose }: Props) 
                       checked={r.id === optionId}
                       onChange={() => setOptionId(r.id)}
                     />
-                    {r.name} ({r.optimalCrew.map(firstName).join(', ')})
+                    {r.name}
+                    {hints && ` (${r.optimalCrew.map(firstName).join(', ')})`}
                   </label>
                 ))}
               {mission.routes.length === 1 && (
-                <span>{route?.optimalCrew.map((id) => CREW[id].name).join(', ')}</span>
+                <span>
+                  {hints
+                    ? route?.optimalCrew.map((id) => CREW[id].name).join(', ')
+                    : `Oculto en la fase ${phase}.`}
+                </span>
               )}
             </fieldset>
           )}
@@ -127,7 +157,7 @@ export function AssignDialog({ task, optionId: initialOption, onClose }: Props) 
                     if (crew.activity === 'dead') return null
                     const availability = getAvailability(crew)
                     const isSelected = selected.includes(id)
-                    const recommended = route?.optimalCrew.includes(id)
+                    const recommended = recommendedIds.includes(id)
                     return (
                       <li key={id}>
                         <button
@@ -145,20 +175,26 @@ export function AssignDialog({ task, optionId: initialOption, onClose }: Props) 
                           <span className="select-info">
                             <strong>{CREW[id].name}</strong>
                             <span className="small muted">
-                              {specialty
+                              {specialty && hints
                                 ? `${SPECIALTY_LABELS[specialty]} ${CREW[id].specialties[specialty]} · `
                                 : ''}
                               {availability.available
                                 ? ACTIVITY_LABELS[crew.activity]
                                 : availability.reasons[0]}
                             </span>
-                            {recommended && <span className="tag tag-info">Equipo óptimo</span>}
+                            {recommended && (
+                              <span className="tag tag-info">
+                                {route ? 'Equipo óptimo' : 'Recomendado'}
+                              </span>
+                            )}
                           </span>
-                          <span className="select-stats">
-                            {STAT_KEYS.map((key) => (
-                              <StatMeter key={key} stat={key} value={crew.stats[key]} compact />
-                            ))}
-                          </span>
+                          {isSelected && (
+                            <span className="select-stats">
+                              {STAT_KEYS.map((key) => (
+                                <StatMeter key={key} stat={key} value={crew.stats[key]} compact />
+                              ))}
+                            </span>
+                          )}
                         </button>
                       </li>
                     )
@@ -180,7 +216,7 @@ export function AssignDialog({ task, optionId: initialOption, onClose }: Props) 
                     <ul className="factor-list">
                       {preview.chance.factors.map((f, i) => (
                         <li key={i} className={f.value < 0 ? 'neg' : undefined}>
-                          <span>{f.label}</span>
+                          <span>{factorLabel(f.label)}</span>
                           <b>
                             {f.label === 'Base' || f.label === 'Equipo óptimo'
                               ? pct(f.value)
@@ -215,7 +251,12 @@ export function AssignDialog({ task, optionId: initialOption, onClose }: Props) 
 
               {preview.composition && selected.length > 0 && (
                 <div className="small">
-                  {preview.composition.activePenalties.length > 0 ? (
+                  {!hints ? (
+                    <p className="muted">
+                      Fase {phase}: N0VA-7 no revela el equipo óptimo ni las penalizaciones por
+                      ausencia.
+                    </p>
+                  ) : preview.composition.activePenalties.length > 0 ? (
                     <ul className="warning-list" aria-label="Penalizaciones por ausencia">
                       {preview.composition.activePenalties.map((rule) => (
                         <li key={rule.crewId}>
@@ -280,4 +321,11 @@ export function AssignDialog({ task, optionId: initialOption, onClose }: Props) 
       </Dialog.Portal>
     </Dialog.Root>
   )
+}
+
+/** The `count` available members with the highest level in the task's specialty. */
+function bestBySpecialty(ids: CrewId[], specialty: SpecialtyKey, count: number): CrewId[] {
+  return [...ids]
+    .sort((a, b) => CREW[b].specialties[specialty] - CREW[a].specialties[specialty])
+    .slice(0, Math.max(1, count))
 }
