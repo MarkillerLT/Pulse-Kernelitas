@@ -13,7 +13,7 @@ Requiere Node 22.12+ y pnpm 10.
 
 ```sh
 pnpm install
-pnpm dev        # http://localhost:5173
+pnpm dev        # landing: http://localhost:5173/ · juego: http://localhost:5173/juego/
 ```
 
 ## Comandos

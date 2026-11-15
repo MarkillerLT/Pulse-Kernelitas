@@ -1,18 +1,184 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="es">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#02050b" />
-    <meta
-      name="description"
-      content="ELYSIUM — RPG de supervivencia espacial. Eres N0VA-7, la IA central de la nave: la tripulación es tu responsabilidad."
-    />
-    <title>ELYSIUM — N0VA-7</title>
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
-  </body>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#080d18">
+  <meta name="description" content="ELYSIUM: eres N0VA-7, la IA central de la nave. Cinco astronautas, un viaje sin final y ninguna vida de repuesto. Cuida su salud y decide quién va a cada crisis.">
+  <title>ELYSIUM — Nadie sobra en el espacio</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="stylesheet" href="/src/styles/landing.css">
+</head>
+<body>
+  <header class="site-header">
+    <a class="brand" href="#inicio" aria-label="Elysium, inicio">
+      <span class="brand-mark" aria-hidden="true">✳</span>
+      <span>Elysium<span class="brand-period">.</span></span>
+    </a>
+    <nav class="main-nav" aria-label="Navegación principal">
+      <a href="#historia">La misión</a>
+      <a href="#tripulacion">La tripulación</a>
+      <a href="#sistema">El sistema</a>
+    </nav>
+    <a class="nav-cta" href="/juego/">Jugar ahora <span aria-hidden="true">↗</span></a>
+  </header>
+
+  <main>
+    <section class="hero" id="inicio">
+      <div class="hero-grid" aria-hidden="true"></div>
+      <div class="hero-copy">
+        <p class="eyebrow"><span class="status-dot"></span> N0VA-7 · IA central de la Elysium</p>
+        <h1>En el espacio,<br>nadie puede<br><span>hacerlo solo.</span></h1>
+        <p class="hero-description">Cinco astronautas. Un viaje sin final. Eres N0VA-7, la IA de la Elysium: vigila a la tripulación, decide quién va a cada tarea y mantén la nave con vida.</p>
+        <div class="hero-actions">
+          <a class="button button-primary" href="#historia">Explorar la misión <span aria-hidden="true">→</span></a>
+          <a class="text-link" href="#tripulacion"><span class="play-icon" aria-hidden="true">↓</span> Conoce a la tripulación</a>
+        </div>
+        <div class="hero-meta">
+          <div class="avatar-stack" aria-hidden="true"><span>OV</span><span>LK</span><span>+</span></div>
+          <p><strong>5 vidas</strong><br>en tus manos</p>
+          <span class="meta-divider"></span>
+          <p><strong>1 nave</strong><br>sin reemplazos</p>
+        </div>
+      </div>
+
+      <div class="hero-art" role="img" aria-label="Ilustración de un astronauta de la Elysium frente a un planeta">
+        <div class="orbit orbit-one"></div>
+        <div class="orbit orbit-two"></div>
+        <div class="planet"></div>
+        <div class="astronaut">
+          <div class="helmet">
+            <div class="helmet-glass"><span class="glass-shine"></span></div>
+            <span class="helmet-rim"></span>
+          </div>
+          <div class="suit">
+            <span class="suit-seam"></span>
+            <span class="suit-patch">E</span>
+            <span class="suit-control"></span>
+          </div>
+          <span class="arm arm-left"></span>
+          <span class="arm arm-right"></span>
+        </div>
+        <div class="art-label label-orbit"><span class="label-line"></span> ESPACIO PROFUNDO</div>
+        <div class="art-label label-coordinate">DÍA 1 · 08:00<br><span>NAVE ELYSIUM</span></div>
+        <div class="health-card">
+          <div class="health-card-heading"><span class="live-dot"></span> SOPORTE VITAL <span class="health-time">EN VIVO</span></div>
+          <div class="heart-rate"><strong>100</strong><span>%</span><span class="pulse-line" aria-hidden="true"></span></div>
+          <div class="health-footer"><span>ESTADO GENERAL</span><strong>ESTABLE</strong></div>
+        </div>
+        <span class="star star-one" aria-hidden="true">✳</span>
+        <span class="star star-two" aria-hidden="true">✦</span>
+        <span class="star star-three" aria-hidden="true">·</span>
+      </div>
+      <div class="hero-bottom"><span>01 — 05</span><span class="bottom-rule"></span><span>LA TRIPULACIÓN ES EL SISTEMA</span><span class="scroll-hint">DESLIZA PARA DESCUBRIR ↓</span></div>
+    </section>
+
+    <section class="mission section-wrap" id="historia">
+      <div class="section-kicker"><span>01 / LA MISIÓN</span><span class="kicker-line"></span><span>SUPERVIVENCIA SIN FINAL</span></div>
+      <div class="mission-layout">
+        <div>
+          <h2>Un viaje sin final.<br>Una nave al límite.<br><span>Un equipo irrepetible.</span></h2>
+        </div>
+        <div class="mission-copy">
+          <p>La Elysium cruza el espacio profundo y cada hora trae algo nuevo: tormentas iónicas, señales de auxilio, filtros saturados. El viaje sigue. Los recursos no.</p>
+          <p>Como N0VA-7 no mueves a nadie: decides qué hace cada quien, lees sus estadísticas y eliges a quién mandar a cada crisis. Si alguien cae, su especialidad se va con él.</p>
+          <a class="text-link dark-link" href="#sistema">Tu misión empieza aquí <span aria-hidden="true">↗</span></a>
+        </div>
+      </div>
+      <div class="mission-stats">
+        <div><strong>8</strong><span>SECTORES DE LA NAVE</span></div>
+        <div><strong>5</strong><span>VIDAS A BORDO</span></div>
+        <div><strong>0</strong><span>PLANES B</span></div>
+        <p>El espacio no espera a que estés listo.</p>
+      </div>
+    </section>
+
+    <section class="crew-section" id="tripulacion">
+      <div class="section-wrap">
+        <div class="section-kicker light-kicker"><span>02 / PERSONAS, NO RECURSOS</span><span class="kicker-line"></span><span>TRIPULACIÓN ELYSIUM</span></div>
+        <div class="crew-heading">
+          <div><h2>Cinco talentos.<br><span>Cero sustitutos.</span></h2></div>
+          <p>Cada integrante sostiene una parte de la misión. Conoce sus fortalezas, vigila su salud y descubre qué necesita cada quien para seguir adelante.</p>
+        </div>
+        <div class="crew-grid">
+          <article class="crew-card">
+            <div class="crew-card-top"><span class="crew-number">01 / COMANDO</span><span class="crew-symbol">✳</span></div>
+            <div class="crew-portrait has-sprite portrait-commander"><img class="crew-sprite" src="/src/assets/characters/pixel/AzulClaroFront.png" alt="Sprite de Orion Vega" width="16" height="16"><span class="portrait-orbit"></span></div>
+            <div class="crew-info"><div><h3>Orion Vega</h3><span class="crew-role">Comandante de misión</span></div><span class="crew-age">PUENTE</span></div>
+            <p>Liderazgo 10. Al iniciar una misión inspira a todos: +10 de moral a la tripulación. Pero carga con cada pérdida: cada muerte le suma +15 de estrés.</p>
+            <div class="crew-need"><span>CLAVE PARA</span><strong>Liderazgo · Moral del equipo</strong></div>
+          </article>
+          <article class="crew-card">
+            <div class="crew-card-top"><span class="crew-number">02 / INGENIERÍA</span><span class="crew-symbol">⌘</span></div>
+            <div class="crew-portrait has-sprite portrait-engineer"><img class="crew-sprite" src="/src/assets/characters/pixel/NaranjaFront.png" alt="Sprite de Lyra Kess" width="16" height="16"><span class="portrait-orbit"></span></div>
+            <div class="crew-info"><div><h3>Lyra Kess</h3><span class="crew-role">Ingeniería y energía</span></div><span class="crew-age">INGENIERÍA</span></div>
+            <p>Técnica 10. Mantiene la energía de la nave desde el Complejo Gagarin. Con sobrecarga cognitiva pierde un 25 % de efectividad.</p>
+            <div class="crew-need"><span>CLAVE PARA</span><strong>Energía · Reparaciones</strong></div>
+          </article>
+          <article class="crew-card">
+            <div class="crew-card-top"><span class="crew-number">03 / MEDICINA</span><span class="crew-symbol">+</span></div>
+            <div class="crew-portrait has-sprite portrait-doctor"><img class="crew-sprite" src="/src/assets/characters/pixel/RojoFront.png" alt="Sprite de Elias Nova" width="16" height="16"><span class="portrait-orbit"></span></div>
+            <div class="crew-info"><div><h3>Elias Nova</h3><span class="crew-role">Médico de a bordo</span></div><span class="crew-age">MÉDICO</span></div>
+            <p>Medicina 10. Con él, toda recuperación de salud rinde +25 %. Cada curación también le cuesta salud a él: alguien tendrá que cuidar al que cuida.</p>
+            <div class="crew-need"><span>CLAVE PARA</span><strong>Enfermería · Salud</strong></div>
+          </article>
+          <article class="crew-card">
+            <div class="crew-card-top"><span class="crew-number">04 / EXPLORACIÓN</span><span class="crew-symbol">⌁</span></div>
+            <div class="crew-portrait has-sprite portrait-pilot"><img class="crew-sprite" src="/src/assets/characters/pixel/AzulOscuroFront.png" alt="Sprite de Zara Void" width="16" height="16"><span class="portrait-orbit"></span></div>
+            <div class="crew-info"><div><h3>Zara Void</h3><span class="crew-role">Exploradora veterana</span></div><span class="crew-age">HANGAR</span></div>
+            <p>Exploración 10. Reduce un 25 % el riesgo de cada expedición, aunque su pierna lesionada le cobra salud fuera de la nave y nunca suelta del todo el estrés.</p>
+            <div class="crew-need"><span>CLAVE PARA</span><strong>Misiones · Expediciones</strong></div>
+          </article>
+          <article class="crew-card">
+            <div class="crew-card-top"><span class="crew-number">05 / AGRICULTURA</span><span class="crew-symbol">⌬</span></div>
+            <div class="crew-portrait has-sprite portrait-scientist"><img class="crew-sprite" src="/src/assets/characters/pixel/VerdeFront.png" alt="Sprite de Kai Verdant" width="16" height="16"><span class="portrait-orbit"></span></div>
+            <div class="crew-info"><div><h3>Kai Verdant</h3><span class="crew-role">Guardián del invernadero</span></div><span class="crew-age">INVERNADERO</span></div>
+            <p>Agricultura 10. Produce la comida de la nave y, mientras está sano, sube la moral de todos. Si la comida escasea, la ansiedad le dispara el estrés.</p>
+            <div class="crew-need"><span>CLAVE PARA</span><strong>Comida · Moral global</strong></div>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section class="system-section section-wrap" id="sistema">
+      <div class="section-kicker"><span>03 / CUIDAR ES SOBREVIVIR</span><span class="kicker-line"></span><span>UN DÍA A LA VEZ</span></div>
+      <div class="system-layout">
+        <div class="system-copy">
+          <h2>No solo cuidas<br>sus cuerpos.<br><span>Los mantienes<br>humanos.</span></h2>
+          <p>Decide cuándo descansan, cuándo trabajan y a quién mandas a cada misión. Vigila su salud, moral, estrés, sueño y confianza antes de que una señal se vuelva emergencia. Cada decisión deja huella.</p>
+          <a class="button button-dark" href="/juego/">La misión te espera <span aria-hidden="true">↗</span></a>
+        </div>
+        <div class="dashboard" aria-label="Ejemplo de panel de monitoreo de la tripulación">
+          <div class="dashboard-header"><div><span class="dashboard-label">SISTEMA BIOMÉTRICO</span><strong>Estado de tripulación</strong></div><span class="dashboard-live"><span class="live-dot"></span> EN LÍNEA</span></div>
+          <div class="dashboard-average"><span>MORAL MEDIA DE LA TRIPULACIÓN</span><strong>77<span>%</span></strong><div class="health-meter"><span style="width: 77%"></span></div><small>Valores al iniciar la partida</small></div>
+          <div class="crew-vitals">
+            <div class="vital-row"><span class="vital-avatar vital-one">OV</span><strong>Orion Vega</strong><span class="vital-bar"><i style="width: 80%"></i></span><span class="vital-score">80</span><span class="vital-state">ESTABLE</span></div>
+            <div class="vital-row"><span class="vital-avatar vital-two">LK</span><strong>Lyra Kess</strong><span class="vital-bar"><i style="width: 70%"></i></span><span class="vital-score">70</span><span class="vital-state state-watch">OBSERVAR</span></div>
+            <div class="vital-row"><span class="vital-avatar vital-three">EN</span><strong>Elias Nova</strong><span class="vital-bar"><i style="width: 85%"></i></span><span class="vital-score">85</span><span class="vital-state">ESTABLE</span></div>
+            <div class="vital-row"><span class="vital-avatar vital-four">ZV</span><strong>Zara Void</strong><span class="vital-bar"><i style="width: 60%"></i></span><span class="vital-score">60</span><span class="vital-state state-watch">OBSERVAR</span></div>
+            <div class="vital-row"><span class="vital-avatar vital-five">KV</span><strong>Kai Verdant</strong><span class="vital-bar"><i style="width: 90%"></i></span><span class="vital-score">90</span><span class="vital-state">ESTABLE</span></div>
+          </div>
+          <div class="dashboard-alert"><span class="alert-icon">!</span><p><strong>Atención requerida</strong><br>Zara Void · Hipervigilancia: el estrés nunca baja del todo</p><span class="alert-arrow">↗</span></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="closing">
+      <span class="closing-star" aria-hidden="true">✳</span>
+      <p class="eyebrow">CINCO PERSONAS. UNA NAVE.</p>
+      <h2>Que nadie se quede<br><span>atrás.</span></h2>
+      <a class="button button-primary" href="/juego/">Sube a bordo <span aria-hidden="true">↗</span></a>
+      <p class="closing-note">ELYSIUM — N0VA-7 EN LÍNEA</p>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <a class="brand" href="#inicio"><span class="brand-mark" aria-hidden="true">✳</span><span>Elysium<span class="brand-period">.</span></span></a>
+    <p>Cinco astronautas, una IA y un viaje sin final.</p>
+    <a href="#inicio">VOLVER ARRIBA ↑</a>
+  </footer>
+</body>
 </html>

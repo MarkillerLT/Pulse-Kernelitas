@@ -5,7 +5,7 @@ test('decision loop runs in real time, survives a reload and can be reset', asyn
   page.on('console', (m) => m.type() === 'error' && errors.push(m.text()))
   page.on('pageerror', (e) => errors.push(String(e)))
 
-  await page.goto('/')
+  await page.goto('/juego/')
   await page.evaluate(() => localStorage.clear())
   await page.reload()
   // First launch: pick the difficulty.
@@ -41,11 +41,11 @@ test('decision loop runs in real time, survives a reload and can be reset', asyn
   await expect(page.getByRole('button', { name: /Pausa/ })).toHaveAttribute('aria-pressed', 'true')
 
   // Reset.
-  await page.goto('/system')
+  await page.goto('/juego/system')
   await page.getByRole('button', { name: /Nueva partida/ }).click()
   await page.getByRole('radio', { name: /Difícil/ }).click()
   await page.getByRole('button', { name: /Comenzar en modo Difícil/ }).click()
-  await page.goto('/')
+  await page.goto('/juego/')
   await expect(page.locator('.clock-time')).toHaveText('Día 1 · 08:00')
   await expect(page.locator('.level-value')).toHaveText('Nivel 10')
 
