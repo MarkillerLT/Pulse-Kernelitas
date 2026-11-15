@@ -18,10 +18,23 @@ export function toWorld(p: Point): [number, number] {
   return [(p.x - MAP_WIDTH / 2) * PX, (p.y - MAP_HEIGHT / 2) * PX]
 }
 
-/** Where the player stands when visiting a sector on board: between its centre and its door. */
+/**
+ * Where the player stands when visiting a sector on board: just inside its door, so the whole
+ * room is in view (and nothing big, like the capsule, is right on top of them).
+ */
 export function spawnPoint(sector: SectorId): Point {
   const r = ROOMS[sector]
-  return { x: (r.x + r.w / 2 + r.door.x) / 2, y: (r.y + r.h / 2 + r.door.y) / 2 }
+  const cx = r.x + r.w / 2
+  const cy = r.y + r.h / 2
+  return { x: r.door.x + (cx - r.door.x) * 0.15, y: r.door.y + (cy - r.door.y) * 0.15 }
+}
+
+/** Ship yaw that turns the room's centre straight ahead (-z) of a player at its spawn point. */
+export function spawnYaw(sector: SectorId): number {
+  const r = ROOMS[sector]
+  const s = spawnPoint(sector)
+  const [dx, dz] = [(r.x + r.w / 2 - s.x) * PX, (r.y + r.h / 2 - s.y) * PX]
+  return Math.PI - Math.atan2(dx, dz)
 }
 
 /** Y rotation that makes a panel at (x, z) face the player standing at the origin. */
@@ -40,8 +53,9 @@ const at = (x: number, y: number, z: number) => ({
  * inside a comfortable ±60° arc, so nobody has to turn around to play.
  */
 export const LAYOUT = {
-  /** Tabletop diorama in front of the player. */
+  /** Tabletop diorama in front of the player, tilted a few degrees toward them. */
   diorama: [0, 0.8, -1.15] as Vec3,
+  dioramaTilt: 0.21,
   /** Status bar above the diorama: clock, speed, ship systems, view controls. */
   hud: at(0, 1.86, -1.5),
   /** Mission launch / return announcements, above the status bar. */
@@ -60,5 +74,10 @@ export const LAYOUT = {
   console: { position: [0, 0.84, -0.4] as Vec3, tilt: -0.85 },
 }
 
-/** Far-away planet the mission capsule flies to (world space). */
-export const PLANET_POS: Vec3 = [-38, 14, -75]
+/**
+ * The ship orbits a big planet seen below and ahead; mission capsules fly down to it.
+ * The sun sits high on the other side, so the planet shows a lit limb (world space, metres).
+ */
+export const PLANET_RADIUS = 90
+export const PLANET_POS: Vec3 = [-40, -105, -190]
+export const SUN_POS: Vec3 = [160, 90, -260]

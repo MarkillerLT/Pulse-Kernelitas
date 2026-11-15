@@ -2,9 +2,10 @@ import { useEffect, useRef, type ReactNode } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import { useXR } from '@react-three/xr'
 import { BackSide, Vector3, type Group, type Mesh, type MeshBasicMaterial } from 'three'
-import { LAYOUT, ONBOARD_SCALE, spawnPoint, toWorld } from './space'
+import { LAYOUT, ONBOARD_SCALE, spawnPoint, spawnYaw, toWorld } from './space'
 import { useVrUi, type View } from './vrUi'
 
+const UP = new Vector3(0, 1, 0)
 const FADE_OUT = 0.22
 const FADE_IN = 0.35
 const same = (a: View, b: View) =>
@@ -14,12 +15,19 @@ const same = (a: View, b: View) =>
 function applyView(group: Group, view: View) {
   if (view.mode === 'diorama') {
     group.position.set(...LAYOUT.diorama)
+    // Raised a few degrees at the far edge: reads better than a flat table and stands apart
+    // from the log console in front of it.
+    group.rotation.set(LAYOUT.dioramaTilt, 0, 0)
     group.scale.setScalar(1)
     return
   }
+  // Life-size, turned so the player looks into the room from its doorway.
   const [x, z] = toWorld(spawnPoint(view.sector))
+  const yaw = spawnYaw(view.sector)
+  group.rotation.set(0, yaw, 0)
   group.scale.setScalar(ONBOARD_SCALE)
-  group.position.set(-x * ONBOARD_SCALE, 0, -z * ONBOARD_SCALE)
+  const feet = new Vector3(x, 0, z).multiplyScalar(ONBOARD_SCALE).applyAxisAngle(UP, yaw)
+  group.position.set(-feet.x, 0, -feet.z)
 }
 
 /**

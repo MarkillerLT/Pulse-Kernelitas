@@ -21,6 +21,7 @@ import { Crew } from './Crew'
 import { UiLayer } from './kit'
 import { sfxTask } from './sfx'
 import { Ship } from './Ship'
+import { SceneEnvironment } from './SceneEnvironment'
 import { ShipRig } from './ShipRig'
 import { LAYOUT } from './space'
 import { useVrUi } from './vrUi'
@@ -30,6 +31,7 @@ import { CrewRoster } from './panels/CrewRoster'
 import { HudPanel } from './panels/HudPanel'
 import { LogConsole } from './panels/LogConsole'
 import { MissionBanner } from './panels/MissionBanner'
+import { OnboardBar } from './panels/OnboardBar'
 import { PausePanel } from './panels/PausePanel'
 import { TaskPanel } from './panels/TaskPanel'
 
@@ -147,16 +149,19 @@ function World() {
   const mode = useXR((s) => s.mode)
   const inSession = useXR((s) => s.session != null)
   const passthrough = mode === 'immersive-ar'
+  // On board, every panel disappears to let the ship be seen; only a way back remains.
+  const onboard = useVrUi((s) => s.view.mode === 'onboard')
 
   return (
     <>
       <Clock />
       <TaskChime />
       {!passthrough && <color attach="background" args={[C.space]} />}
-      {!passthrough && <Stars radius={90} depth={40} count={3500} factor={4} fade speed={0.3} />}
+      {!passthrough && <Stars radius={320} depth={80} count={5000} factor={6} fade speed={0.3} />}
       {!passthrough && <Backdrop />}
-      <hemisphereLight args={['#cfe0ff', '#1a1f2b', 0.95]} />
-      <directionalLight position={[1.5, 3, 1]} intensity={1.3} />
+      <SceneEnvironment />
+      <hemisphereLight args={['#cfe0ff', '#1a1f2b', 0.6]} />
+      <directionalLight position={[1.5, 3, 1]} intensity={1.0} />
       {!inSession && <OrbitControls makeDefault maxDistance={6} minDistance={0.3} />}
 
       <ShipRig>
@@ -164,24 +169,34 @@ function World() {
         <Crew game={game} />
       </ShipRig>
 
-      <HudPanel game={game} position={LAYOUT.hud.position} rotY={LAYOUT.hud.rotY} />
-      <MissionBanner position={LAYOUT.banner.position} rotY={LAYOUT.banner.rotY} />
-      <TaskPanel game={game} position={LAYOUT.tasks.position} rotY={LAYOUT.tasks.rotY} />
-      {/* Panels with textures load on their own, so they never suspend the whole world. */}
-      <Suspense fallback={null}>
-        <CrewRoster game={game} position={LAYOUT.roster.position} rotY={LAYOUT.roster.rotY} />
-      </Suspense>
-      {selectedCrew && (
-        <Suspense fallback={null}>
-          <CrewPanel
-            game={game}
-            crewId={selectedCrew}
-            position={LAYOUT.crewCard.position}
-            rotY={LAYOUT.crewCard.rotY}
+      {onboard ? (
+        <OnboardBar />
+      ) : (
+        <>
+          <HudPanel game={game} position={LAYOUT.hud.position} rotY={LAYOUT.hud.rotY} />
+          <MissionBanner position={LAYOUT.banner.position} rotY={LAYOUT.banner.rotY} />
+          <TaskPanel game={game} position={LAYOUT.tasks.position} rotY={LAYOUT.tasks.rotY} />
+          {/* Panels with textures load on their own, so they never suspend the whole world. */}
+          <Suspense fallback={null}>
+            <CrewRoster game={game} position={LAYOUT.roster.position} rotY={LAYOUT.roster.rotY} />
+          </Suspense>
+          {selectedCrew && (
+            <Suspense fallback={null}>
+              <CrewPanel
+                game={game}
+                crewId={selectedCrew}
+                position={LAYOUT.crewCard.position}
+                rotY={LAYOUT.crewCard.rotY}
+              />
+            </Suspense>
+          )}
+          <LogConsole
+            log={game.log}
+            position={LAYOUT.console.position}
+            tilt={LAYOUT.console.tilt}
           />
-        </Suspense>
+        </>
       )}
-      <LogConsole log={game.log} position={LAYOUT.console.position} tilt={LAYOUT.console.tilt} />
 
       {/* Modal windows: right in front, drawn above every other panel. */}
       {menuOpen ? (
@@ -189,7 +204,8 @@ function World() {
           <PausePanel position={LAYOUT.modal.position} rotY={LAYOUT.modal.rotY} />
         </UiLayer>
       ) : (
-        assigning && (
+        assigning &&
+        !onboard && (
           <UiLayer base={100}>
             <AssignPanel
               key={`${assigning.taskId}:${assigning.optionId}`}
@@ -254,7 +270,7 @@ export function VRView() {
   return (
     <div style={{ position: 'fixed', inset: 0, background: C.space }}>
       <Canvas
-        camera={{ position: [0, 1.95, 1.7], fov: 60, near: 0.02, far: 200 }}
+        camera={{ position: [0, 1.75, 0.75], fov: 60, near: 0.02, far: 1200 }}
         dpr={[1, 2]}
         onCreated={({ gl }) => {
           const ctx = gl.getContext()

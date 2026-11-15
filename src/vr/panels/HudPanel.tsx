@@ -44,8 +44,8 @@ function NoticeRow({ notice, y }: { notice: Notice; y: number }) {
 
 /**
  * Status bar above the ship: clock, level, ship systems, time controls (Auto / 1× / 2× / 4× and
- * the pause menu), the view switch (diorama ↔ on board) and, on board, one button per sector to
- * travel there. Latest notices at the bottom.
+ * the pause menu) and one button per sector to go on board and see it life-size. Latest notices
+ * at the bottom.
  */
 export function HudPanel({
   game,
@@ -63,17 +63,14 @@ export function HudPanel({
   const setAutoSpeed = useGame((s) => s.setAutoSpeed)
   const openMenu = useGame((s) => s.openMenu)
   const notices = useGame((s) => s.notices)
-  const view = useVrUi((s) => s.view)
   const goOnboard = useVrUi((s) => s.goOnboard)
-  const goDiorama = useVrUi((s) => s.goDiorama)
   const alive = CREW_IDS.filter((id) => game.crew[id].activity !== 'dead').length
   const over = game.status !== 'active'
-  const onboard = view.mode === 'onboard'
   const shown = notices.slice(-2)
 
   const rowControls = -0.15
-  const rowSectors = rowControls - 0.07
-  const rowNotices = (onboard ? rowSectors - 0.065 : rowControls - 0.075) - 0.01
+  const rowSectors = rowControls - 0.092
+  const rowNotices = rowSectors - 0.075
   const height = -rowNotices + shown.length * 0.03 + PAD * 0.6
 
   const sectorW = (INNER - 0.006 * 7) / 8
@@ -145,41 +142,20 @@ export function HudPanel({
           position={[PAD + 0.39, rowControls, 0]}
           onClick={() => openMenu('guide')}
         />
-        <Label position={[W - PAD - 0.43, rowControls - 0.017, 0]} size={0.015} color={C.dim}>
-          VISTA
+        <Label position={[PAD, rowControls - 0.066, 0]} size={0.015} color={C.dim}>
+          RECORRER A BORDO · ELIGE UN SECTOR PARA VERLO A TAMAÑO REAL
         </Label>
-        <Button
-          label="Maqueta"
-          size={0.019}
-          active={!onboard}
-          width={0.17}
-          height={0.05}
-          position={[W - PAD - 0.35, rowControls, 0]}
-          onClick={goDiorama}
-        />
-        <Button
-          label="A bordo"
-          size={0.019}
-          active={onboard}
-          width={0.17}
-          height={0.05}
-          position={[W - PAD - 0.17, rowControls, 0]}
-          onClick={() => goOnboard(view.sector)}
-        />
-
-        {onboard &&
-          SECTOR_IDS.map((id, i) => (
-            <Button
-              key={id}
-              label={ROOM_LABELS[id]}
-              size={0.015}
-              active={view.sector === id}
-              width={sectorW}
-              height={0.05}
-              position={[PAD + i * (sectorW + 0.006), rowSectors, 0]}
-              onClick={() => goOnboard(id)}
-            />
-          ))}
+        {SECTOR_IDS.map((id, i) => (
+          <Button
+            key={id}
+            label={ROOM_LABELS[id]}
+            size={0.016}
+            width={sectorW}
+            height={0.05}
+            position={[PAD + i * (sectorW + 0.006), rowSectors, 0]}
+            onClick={() => goOnboard(id)}
+          />
+        ))}
 
         {shown.map((n, i) => (
           <NoticeRow key={n.id} notice={n} y={rowNotices - i * 0.03} />
