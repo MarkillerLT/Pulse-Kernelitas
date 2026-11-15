@@ -1,3 +1,4 @@
+import { lazy, Suspense } from 'react'
 import { createBrowserRouter, type RouteObject } from 'react-router'
 import { AppShell } from './AppShell'
 import { ConsoleView } from './console/ConsoleView'
@@ -9,8 +10,20 @@ import { SectorsView } from './views/SectorsView'
 import { SectorView } from './views/SectorView'
 import { SystemView } from './views/SystemView'
 import { NotFoundView } from './views/NotFoundView'
+import { VRLoading } from '../vr/DiagOverlay'
+
+// three.js + WebXR only load when someone opens /vr.
+const VRView = lazy(() => import('../vr/VRView'))
 
 export const routes: RouteObject[] = [
+  {
+    path: '/vr',
+    element: (
+      <Suspense fallback={<VRLoading />}>
+        <VRView />
+      </Suspense>
+    ),
+  },
   {
     path: '/',
     element: <AppShell />,

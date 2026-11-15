@@ -17,4 +17,6 @@ export default tseslint.config(
     },
   },
   { files: ['scripts/**/*.mjs', '*.js'], languageOptions: { globals: globals.node } },
+  // Static landing page scripts at the repo root run in the browser, not in Node.
+  { files: ['vitals.js'], languageOptions: { globals: globals.browser } },
 )

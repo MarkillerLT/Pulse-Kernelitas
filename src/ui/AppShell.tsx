@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 import { NavLink, Outlet, useLocation } from 'react-router'
-import { Cpu, Map, Monitor, Rocket, ScrollText, Settings, Users, X } from 'lucide-react'
+import { Cpu, Glasses, Map, Monitor, Rocket, ScrollText, Settings, Users, X } from 'lucide-react'
 import { CREW_IDS } from '../domain/content/crew'
 import { gameStore, useGame, type Notice } from '../store/gameStore'
 import { MODE_INFO, tierOf } from '../domain/rules/difficulty'
@@ -14,6 +14,7 @@ const NAV = [
   { to: '/sectors', label: 'Sectores', icon: Map },
   { to: '/log', label: 'Historial', icon: ScrollText },
   { to: '/system', label: 'Sistema', icon: Settings },
+  { to: '/vr', label: 'Modo VR', icon: Glasses },
 ]
 
 /** Drives the game clock from real time, whatever page is open. */

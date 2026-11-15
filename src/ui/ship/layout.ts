@@ -10,6 +10,18 @@ export const MAP_HEIGHT = 224
 /** Walkway between sectors. Crew walk along `walkY` (feet position). */
 export const CORRIDOR = { x: 112, y: 102, w: 220, h: 20, walkY: 116 }
 
+/** Short names that fit inside each room on the map and the 3D diorama. */
+export const ROOM_LABELS: Record<SectorId, string> = {
+  armstrong: 'Puente',
+  gagarin: 'Ingeniería',
+  ride: 'Médico',
+  aldrin: 'Hangar',
+  tereshkova: 'Invernadero',
+  collins: 'Núcleo',
+  habitat: 'Hábitat',
+  'life-support': 'Soporte',
+}
+
 export interface Point {
   x: number
   y: number
