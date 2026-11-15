@@ -7,7 +7,6 @@ import type { GameState } from '../domain/model/game'
 import {
   BEDS,
   CORRIDOR,
-  HANGAR,
   MED_BEDS,
   ROOMS,
   ROOM_LABELS,
@@ -18,6 +17,7 @@ import { C, SECTOR_FLOOR, SEVERITY_COLOR } from './colors'
 import { Label } from './kit'
 import { PX, toWorld } from './space'
 import { useVrUi } from './vrUi'
+import { MissionFx } from './MissionFx'
 
 /**
  * The Elysium as a procedural diorama: every mesh is a primitive (boxes, cylinders, spheres),
@@ -197,6 +197,7 @@ function AlertMarker({ room, severity }: { room: Room; severity: keyof typeof SE
             <meshBasicMaterial color={SEVERITY_COLOR[severity]} />
           </mesh>
           <Label
+            world
             position={[0, 0.002, 0.001]}
             size={0.032}
             anchorX="center"
@@ -216,7 +217,7 @@ function RoomLabel({ room }: { room: Room }) {
   return (
     <At p={{ x: room.x + room.w / 2, y: room.y + 8 }} h={WALL_H + 0.015}>
       <Billboard>
-        <Label size={0.018} anchorX="center" anchorY="middle" color={C.muted}>
+        <Label world size={0.018} anchorX="center" anchorY="middle" color={C.muted}>
           {ROOM_LABELS[room.id]}
         </Label>
       </Billboard>
@@ -286,18 +287,6 @@ function HangarProps({ away }: { away: boolean }) {
         color="#3d4352"
         emissive={away ? '#ffb547' : undefined}
       />
-      {!away && (
-        <At p={HANGAR} h={0.03}>
-          <mesh rotation={[0, 0, Math.PI / 2]}>
-            <capsuleGeometry args={[7 * PX, 18 * PX, 6, 12]} />
-            <meshStandardMaterial color="#c9d2de" metalness={0.5} roughness={0.35} />
-          </mesh>
-          <mesh position={[-0.055, 0, 0]} rotation={[0, 0, Math.PI / 2]}>
-            <coneGeometry args={[5 * PX, 8 * PX, 12]} />
-            <meshStandardMaterial color="#ff8a3d" emissive="#ff6a1a" emissiveIntensity={1} />
-          </mesh>
-        </At>
-      )}
     </>
   )
 }
@@ -445,6 +434,7 @@ export function Ship({ game }: { game: GameState }) {
       <EngineeringProps />
       <MedicalProps />
       <HangarProps away={away} />
+      <MissionFx game={game} />
       <GreenhouseProps />
       <CoreProps />
       <HabitatProps />

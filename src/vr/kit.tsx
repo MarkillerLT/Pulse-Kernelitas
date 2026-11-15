@@ -1,19 +1,78 @@
-import { useState, type ReactNode } from 'react'
+import { createContext, useContext, useMemo, useState, type ReactNode } from 'react'
 import { Text } from '@react-three/drei'
 import type { ThreeEvent } from '@react-three/fiber'
+import { MeshBasicMaterial, NearestFilter, SRGBColorSpace, type Texture } from 'three'
 import fontRegular from '@fontsource/dm-mono/files/dm-mono-latin-400-normal.woff?url'
 import fontMedium from '@fontsource/dm-mono/files/dm-mono-latin-500-normal.woff?url'
 import { C } from './colors'
 import { glyphSafe } from './text'
 
 /**
- * Minimal world-space UI kit for the VR view: flat panels, labels and buttons built from planes
- * and SDF text. Sizes are metres; at ~1 m from the eyes a 0.024 m font reads comfortably on a
- * Quest 3. Every interactive element works with the mouse (desktop) and with XR rays / hands,
- * because @react-three/xr feeds controller pointers into the same R3F pointer events.
+ * World-space UI kit for the VR view: flat panels, labels, buttons, meters and pixel images.
+ * Sizes are metres; at ~1 m a 0.024 m font reads comfortably on a Quest 3. Everything works with
+ * the mouse (desktop) and with XR rays / hands, since @react-three/xr feeds controller pointers
+ * into the same R3F pointer events.
+ *
+ * UI never depth-tests against the scene, so when the player is on board no wall or prop can
+ * hide a panel. Draw order inside a panel comes from renderOrder (background < controls <
+ * text), and `UiLayer` lifts modal windows above every other panel.
  */
 
 type Vec3 = [number, number, number]
+
+const LayerContext = createContext(10)
+
+/** Renders its panels above the default UI layer (modals: decisions, pause). */
+export function UiLayer({ base, children }: { base: number; children: ReactNode }) {
+  return <LayerContext.Provider value={base}>{children}</LayerContext.Provider>
+}
+
+function useLayer() {
+  return useContext(LayerContext)
+}
+
+/** Base material for UI text: same look, but always drawn over the scene. */
+const uiTextMaterial = new MeshBasicMaterial({
+  transparent: true,
+  depthTest: false,
+  depthWrite: false,
+})
+
+function UiPlane({
+  width,
+  height,
+  color,
+  opacity = 1,
+  order,
+  position,
+  map,
+  ...events
+}: {
+  width: number
+  height: number
+  color?: string
+  opacity?: number
+  order: number
+  position?: Vec3
+  map?: Texture
+  onClick?: (e: ThreeEvent<MouseEvent>) => void
+  onPointerOver?: (e: ThreeEvent<PointerEvent>) => void
+  onPointerOut?: () => void
+}) {
+  return (
+    <mesh position={position} renderOrder={order} {...events}>
+      <planeGeometry args={[width, height]} />
+      <meshBasicMaterial
+        color={color}
+        map={map}
+        transparent
+        opacity={opacity}
+        depthTest={false}
+        depthWrite={false}
+      />
+    </mesh>
+  )
+}
 
 export function Panel({
   width,
@@ -22,7 +81,8 @@ export function Panel({
   rotation,
   children,
   color = C.panel,
-  opacity = 0.92,
+  opacity = 0.94,
+  accent = C.accent,
 }: {
   width: number
   height: number
@@ -31,18 +91,28 @@ export function Panel({
   children?: ReactNode
   color?: string
   opacity?: number
+  accent?: string
 }) {
+  const base = useLayer()
   return (
     <group position={position} rotation={rotation}>
-      <mesh>
-        <planeGeometry args={[width, height]} />
-        <meshBasicMaterial color={color} transparent opacity={opacity} />
-      </mesh>
-      {/* Thin accent frame so panels read against the starfield and in passthrough. */}
-      <mesh position={[0, height / 2 - 0.002, 0.0005]}>
-        <planeGeometry args={[width, 0.004]} />
-        <meshBasicMaterial color={C.accent} />
-      </mesh>
+      {/* Catches rays so pointing at a panel never clicks the ship behind it. */}
+      <UiPlane
+        width={width}
+        height={height}
+        color={color}
+        opacity={opacity}
+        order={base}
+        onClick={(e) => e.stopPropagation()}
+      />
+      {/* Accent edge on top, like the cards of the landing page. */}
+      <UiPlane
+        width={width}
+        height={0.005}
+        color={accent}
+        order={base + 1}
+        position={[0, height / 2 - 0.0025, 0.0005]}
+      />
       <group position={[-width / 2, height / 2, 0.001]}>{children}</group>
     </group>
   )
@@ -57,6 +127,7 @@ export function Label({
   bold,
   anchorX = 'left',
   anchorY = 'top',
+  world = false,
 }: {
   children: string
   position?: Vec3
@@ -66,7 +137,10 @@ export function Label({
   bold?: boolean
   anchorX?: 'left' | 'center' | 'right'
   anchorY?: 'top' | 'middle' | 'bottom'
+  /** Labels that belong to the ship (room names, crew status) depth-test like the ship. */
+  world?: boolean
 }) {
+  const base = useLayer()
   return (
     <Text
       position={position}
@@ -77,6 +151,8 @@ export function Label({
       anchorX={anchorX}
       anchorY={anchorY}
       lineHeight={1.25}
+      renderOrder={world ? 0 : base + 3}
+      material={world ? undefined : uiTextMaterial}
       // Labels never steal pointer hits from the buttons behind/around them.
       raycast={() => null}
     >
@@ -107,10 +183,24 @@ export function Button({
   active?: boolean
   size?: number
 }) {
+  const base = useLayer()
   const [hover, setHover] = useState(false)
-  const base =
-    tone === 'primary' ? C.primary : tone === 'danger' ? C.danger : active ? C.active : C.button
-  const color = disabled ? C.buttonDisabled : hover ? C.buttonHover : base
+  const primary = tone === 'primary'
+  const fill =
+    tone === 'primary'
+      ? hover
+        ? C.accentHover
+        : C.accent
+      : tone === 'danger'
+        ? hover
+          ? C.dangerHover
+          : C.danger
+        : hover
+          ? C.buttonHover
+          : active
+            ? C.active
+            : C.button
+  const color = disabled ? C.buttonDisabled : fill
   const handlers = disabled
     ? {}
     : {
@@ -126,15 +216,15 @@ export function Button({
       }
   return (
     <group position={[position[0] + width / 2, position[1] - height / 2, position[2] + 0.002]}>
-      <mesh {...handlers}>
-        <planeGeometry args={[width, height]} />
-        <meshBasicMaterial color={color} />
-      </mesh>
-      {active && (
-        <mesh position={[-width / 2 + 0.003, 0, 0.0005]}>
-          <planeGeometry args={[0.006, height]} />
-          <meshBasicMaterial color={C.accent} />
-        </mesh>
+      <UiPlane width={width} height={height} color={color} order={base + 1} {...handlers} />
+      {(active || hover) && !primary && !disabled && (
+        <UiPlane
+          width={width}
+          height={0.004}
+          color={C.accent}
+          order={base + 2}
+          position={[0, -height / 2 + 0.002, 0.0005]}
+        />
       )}
       <Label
         position={[0, 0, 0.001]}
@@ -142,7 +232,8 @@ export function Button({
         anchorX="center"
         anchorY="middle"
         maxWidth={width - 0.02}
-        color={disabled ? C.muted : C.text}
+        bold={primary || active}
+        color={disabled ? C.muted : primary ? C.accentInk : active ? C.accent : C.text}
       >
         {label}
       </Label>
@@ -162,22 +253,91 @@ export function Meter({
   value: number
   invert?: boolean
 }) {
+  const base = useLayer()
   const v = Math.max(0, Math.min(100, value)) / 100
   const good = invert ? 1 - v : v
   const color = good >= 0.6 ? C.good : good >= 0.35 ? C.warn : C.critical
   const h = 0.012
   return (
     <group position={position}>
-      <mesh position={[width / 2, -h / 2, 0]}>
-        <planeGeometry args={[width, h]} />
-        <meshBasicMaterial color={C.track} />
-      </mesh>
+      <UiPlane
+        width={width}
+        height={h}
+        color={C.track}
+        order={base + 1}
+        position={[width / 2, -h / 2, 0]}
+      />
       {v > 0 && (
-        <mesh position={[(width * v) / 2, -h / 2, 0.0005]}>
-          <planeGeometry args={[width * v, h]} />
-          <meshBasicMaterial color={color} />
-        </mesh>
+        <UiPlane
+          width={width * v}
+          height={h}
+          color={color}
+          order={base + 2}
+          position={[(width * v) / 2, -h / 2, 0.0005]}
+        />
       )}
     </group>
+  )
+}
+
+/** Pixel-art image (the crew sprites), kept crisp with nearest-neighbour filtering. */
+export function PixelImage({
+  texture,
+  size,
+  position,
+  dimmed,
+}: {
+  texture: Texture
+  size: number
+  position: Vec3
+  dimmed?: boolean
+}) {
+  const base = useLayer()
+  const map = useMemo(() => {
+    const t = texture.clone()
+    t.magFilter = NearestFilter
+    t.minFilter = NearestFilter
+    t.colorSpace = SRGBColorSpace
+    t.needsUpdate = true
+    return t
+  }, [texture])
+  return (
+    <UiPlane
+      width={size}
+      height={size}
+      map={map}
+      color={dimmed ? '#555555' : '#ffffff'}
+      order={base + 2}
+      position={position}
+    />
+  )
+}
+
+/** Solid rectangle positioned by its top-left corner (row backgrounds, badges). */
+export function Rect({
+  position,
+  width,
+  height,
+  color,
+  opacity = 1,
+  layer = 1,
+}: {
+  position: Vec3
+  width: number
+  height: number
+  color: string
+  opacity?: number
+  layer?: number
+}) {
+  const base = useLayer()
+  return (
+    <UiPlane
+      width={width}
+      height={height}
+      color={color}
+      opacity={opacity}
+      order={base + layer}
+      position={[position[0] + width / 2, position[1] - height / 2, position[2]]}
+    />
   )
 }

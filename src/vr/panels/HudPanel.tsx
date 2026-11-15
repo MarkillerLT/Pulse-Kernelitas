@@ -1,21 +1,20 @@
 import { useEffect } from 'react'
 import { CREW_IDS } from '../../domain/content/crew'
+import { SECTOR_IDS } from '../../domain/content/sectors'
 import type { GameState } from '../../domain/model/game'
 import { MODE_INFO, tierOf } from '../../domain/rules/difficulty'
-import { gameStore, useClockMinutes, useGame, type Notice, type Speed } from '../../store/gameStore'
+import { gameStore, useClockMinutes, useGame, type Notice } from '../../store/gameStore'
 import { formatClock } from '../../ui/activity'
+import { ROOM_LABELS } from '../../ui/ship/layout'
 import { C } from '../colors'
 import { Button, Label, Meter, Panel } from '../kit'
 import { clip } from '../text'
+import { useVrUi } from '../vrUi'
 
-const W = 1.1
-const PAD = 0.03
-const SPEEDS: { value: Speed; label: string }[] = [
-  { value: 0, label: 'Pausa' },
-  { value: 1, label: '1×' },
-  { value: 2, label: '2×' },
-  { value: 4, label: '4×' },
-]
+const W = 1.24
+const PAD = 0.035
+const INNER = W - PAD * 2
+const SPEEDS = [1, 2, 4] as const
 const SHIP_STATS = [
   ['lifeSupport', 'Soporte vital'],
   ['power', 'Energía'],
@@ -37,105 +36,153 @@ function NoticeRow({ notice, y }: { notice: Notice; y: number }) {
     return () => window.clearTimeout(t)
   }, [notice.id])
   return (
-    <Label
-      position={[PAD, y, 0]}
-      size={0.017}
-      color={TONE_COLOR[notice.tone]}
-      maxWidth={W - PAD * 2}
-    >
-      {clip(notice.text, 110)}
+    <Label position={[PAD, y, 0]} size={0.019} color={TONE_COLOR[notice.tone]} maxWidth={INNER}>
+      {clip(notice.text, 100)}
     </Label>
   )
 }
 
-/** Ship status strip above the diorama: clock, level, ship resources, speed and notices. */
+/**
+ * Status bar above the ship: clock, level, ship systems, time controls (Auto / 1× / 2× / 4× and
+ * the pause menu), the view switch (diorama ↔ on board) and, on board, one button per sector to
+ * travel there. Latest notices at the bottom.
+ */
 export function HudPanel({
   game,
   position,
+  rotY,
 }: {
   game: GameState
   position: [number, number, number]
+  rotY: number
 }) {
   const speed = useGame((s) => s.speed)
   const minutes = useClockMinutes()
   const setSpeed = useGame((s) => s.setSpeed)
   const auto = useGame((s) => s.speedMode === 'auto')
   const setAutoSpeed = useGame((s) => s.setAutoSpeed)
-  const notices = useGame((s) => s.notices)
   const openMenu = useGame((s) => s.openMenu)
+  const notices = useGame((s) => s.notices)
+  const view = useVrUi((s) => s.view)
+  const goOnboard = useVrUi((s) => s.goOnboard)
+  const goDiorama = useVrUi((s) => s.goDiorama)
   const alive = CREW_IDS.filter((id) => game.crew[id].activity !== 'dead').length
   const over = game.status !== 'active'
-  const shown = notices.slice(-3)
-  const height = 0.2 + shown.length * 0.03 + (over ? 0.06 : 0)
+  const onboard = view.mode === 'onboard'
+  const shown = notices.slice(-2)
 
+  const rowControls = -0.15
+  const rowSectors = rowControls - 0.07
+  const rowNotices = (onboard ? rowSectors - 0.065 : rowControls - 0.075) - 0.01
+  const height = -rowNotices + shown.length * 0.03 + PAD * 0.6
+
+  const sectorW = (INNER - 0.006 * 7) / 8
   return (
-    <group position={[position[0], position[1] - height / 2, position[2]]}>
+    <group position={[position[0], position[1] - height / 2, position[2]]} rotation={[0, rotY, 0]}>
       <Panel width={W} height={height}>
-        <Label position={[PAD, -0.028, 0]} size={0.03} bold color={C.accent}>
+        <Label position={[PAD, -0.03, 0]} size={0.034} bold color={C.accent}>
           ELYSIUM
         </Label>
-        <Label position={[PAD + 0.17, -0.036, 0]} size={0.019}>
-          {`${formatClock(game.hour, minutes)}${speed === 0 && !over ? ' · pausa' : ''}`}
+        <Label position={[PAD + 0.2, -0.033, 0]} size={0.03} bold>
+          {formatClock(game.hour, minutes)}
         </Label>
-        <Label position={[PAD + 0.48, -0.036, 0]} size={0.019} color={C.muted}>
-          {`Nivel ${game.difficulty.level} · ${MODE_INFO[tierOf(game.difficulty.level)].label} · Tripulación ${alive}/${CREW_IDS.length}`}
+        <Label
+          position={[PAD + 0.2, -0.072, 0]}
+          size={0.016}
+          color={speed === 0 ? C.warn : C.accent}
+        >
+          {over
+            ? 'VIAJE TERMINADO'
+            : speed === 0
+              ? 'EN PAUSA'
+              : `EN CURSO · ${auto ? 'AUTO' : 'MANUAL'} ${speed}×`}
         </Label>
+        <Label position={[W - PAD, -0.035, 0]} size={0.019} color={C.muted} anchorX="right">
+          {`Nivel ${game.difficulty.level} · ${MODE_INFO[tierOf(game.difficulty.level)].label}   Tripulación ${alive}/${CREW_IDS.length}`}
+        </Label>
+
         {SHIP_STATS.map(([key, label], i) => {
-          const x = PAD + i * ((W - PAD * 2) / SHIP_STATS.length)
-          const w = (W - PAD * 2) / SHIP_STATS.length - 0.025
+          const cell = INNER / SHIP_STATS.length
           return (
-            <group key={key} position={[x, -0.075, 0]}>
-              <Label size={0.015} color={C.muted}>
-                {`${label} ${Math.round(game.ship[key])}`}
+            <group key={key} position={[PAD + i * cell, -0.098, 0]}>
+              <Label size={0.015} color={C.dim}>
+                {`${label.toUpperCase()}  ${Math.round(game.ship[key])}%`}
               </Label>
-              <Meter position={[0, -0.025, 0]} width={w} value={game.ship[key]} />
+              <Meter position={[0, -0.024, 0]} width={cell - 0.03} value={game.ship[key]} />
             </group>
           )
         })}
+
+        <Button
+          label="Auto"
+          size={0.019}
+          active={auto}
+          disabled={over}
+          width={0.11}
+          height={0.05}
+          position={[PAD, rowControls, 0]}
+          onClick={setAutoSpeed}
+        />
         {SPEEDS.map((s, i) => (
           <Button
-            key={s.value}
-            label={s.label}
-            size={0.018}
-            active={s.value === 0 ? speed === 0 : !auto && speed === s.value}
+            key={s}
+            label={`${s}×`}
+            size={0.019}
+            active={!auto && speed === s}
             disabled={over}
-            width={0.1}
-            height={0.045}
-            position={[PAD + i * 0.108, -0.135, 0]}
-            onClick={() => setSpeed(s.value)}
+            width={0.08}
+            height={0.05}
+            position={[PAD + 0.118 + i * 0.087, rowControls, 0]}
+            onClick={() => setSpeed(s)}
           />
         ))}
         <Button
-          label={auto && speed !== 0 ? `Auto ${speed}×` : 'Auto'}
-          size={0.018}
-          active={auto}
-          disabled={over}
-          width={0.14}
-          height={0.045}
-          position={[PAD + SPEEDS.length * 0.108, -0.135, 0]}
-          onClick={setAutoSpeed}
+          label="Pausa / menú"
+          tone="primary"
+          size={0.019}
+          width={0.19}
+          height={0.05}
+          position={[PAD + 0.39, rowControls, 0]}
+          onClick={() => openMenu('guide')}
+        />
+        <Label position={[W - PAD - 0.43, rowControls - 0.017, 0]} size={0.015} color={C.dim}>
+          VISTA
+        </Label>
+        <Button
+          label="Maqueta"
+          size={0.019}
+          active={!onboard}
+          width={0.17}
+          height={0.05}
+          position={[W - PAD - 0.35, rowControls, 0]}
+          onClick={goDiorama}
         />
         <Button
-          label="Nueva partida"
-          size={0.017}
-          width={0.2}
-          height={0.045}
-          position={[W - PAD - 0.2, -0.135, 0]}
-          onClick={() => openMenu('difficulty')}
+          label="A bordo"
+          size={0.019}
+          active={onboard}
+          width={0.17}
+          height={0.05}
+          position={[W - PAD - 0.17, rowControls, 0]}
+          onClick={() => goOnboard(view.sector)}
         />
-        {over && (
-          <Label
-            position={[PAD, -0.195, 0]}
-            size={0.02}
-            color={C.critical}
-            maxWidth={W - PAD * 2}
-            bold
-          >
-            {clip(`Partida terminada. ${game.endReason ?? ''}`, 100)}
-          </Label>
-        )}
+
+        {onboard &&
+          SECTOR_IDS.map((id, i) => (
+            <Button
+              key={id}
+              label={ROOM_LABELS[id]}
+              size={0.015}
+              active={view.sector === id}
+              width={sectorW}
+              height={0.05}
+              position={[PAD + i * (sectorW + 0.006), rowSectors, 0]}
+              onClick={() => goOnboard(id)}
+            />
+          ))}
+
         {shown.map((n, i) => (
-          <NoticeRow key={n.id} notice={n} y={-0.2 - (over ? 0.06 : 0) - i * 0.03} />
+          <NoticeRow key={n.id} notice={n} y={rowNotices - i * 0.03} />
         ))}
       </Panel>
     </group>

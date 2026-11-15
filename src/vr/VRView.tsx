@@ -13,27 +13,38 @@ import { OrbitControls, Stars } from '@react-three/drei'
 import { XR, createXRStore, useXR } from '@react-three/xr'
 import type { Mesh } from 'three'
 import { gameStore, useGame } from '../store/gameStore'
+import { Backdrop } from './Backdrop'
 import { C } from './colors'
 import { diag, installDiag } from './diag'
 import { DiagOverlay } from './DiagOverlay'
 import { Crew } from './Crew'
+import { UiLayer } from './kit'
+import { sfxTask } from './sfx'
 import { Ship } from './Ship'
+import { ShipRig } from './ShipRig'
 import { LAYOUT } from './space'
 import { useVrUi } from './vrUi'
 import { AssignPanel } from './panels/AssignPanel'
 import { CrewPanel } from './panels/CrewPanel'
+import { CrewRoster } from './panels/CrewRoster'
 import { HudPanel } from './panels/HudPanel'
-import { SetupPanel } from './panels/SetupPanel'
+import { LogConsole } from './panels/LogConsole'
+import { MissionBanner } from './panels/MissionBanner'
+import { PausePanel } from './panels/PausePanel'
 import { TaskPanel } from './panels/TaskPanel'
 
 /**
- * /vr — the same game as the 2D console, played around a floating diorama of the ship.
- * Works on desktop (mouse + orbit) and on Meta Quest via WebXR: VR over a starfield, or mixed
- * reality with the ship on your real table (passthrough). Controllers and hand tracking both
- * click the panels; there is no locomotion, everything is within arm's reach.
+ * /juego/vr — the same game as the 2D console, played from inside the Elysium. Works on desktop
+ * (mouse + orbit) and on Meta Quest via WebXR: VR in deep space, or mixed reality in the
+ * player's room (passthrough). The ship is a tabletop diorama or, "a bordo", life-size around
+ * the player; moving between sectors fades to black instead of sliding (no motion sickness).
+ * Panels surround the player within arm's reach: tasks on the left, crew faces on the right,
+ * status bar ahead, the log as a cockpit console, and decisions / pause right in front.
  */
 installDiag()
 diag('módulo VR cargado')
+// Dev-only handles to drive the scene from the console / automated checks.
+if (import.meta.env.DEV) Object.assign(window, { __game: gameStore, __vrUi: useVrUi })
 
 const xrStore = createXRStore({
   controller: { teleportPointer: false },
@@ -109,9 +120,27 @@ function Clock() {
   return null
 }
 
+/** Console chime whenever a new task appears (not for the ones already there on load). */
+function TaskChime() {
+  const openIds = useGame((s) =>
+    s.game.tasks
+      .filter((t) => t.status === 'open')
+      .map((t) => t.id)
+      .join(','),
+  )
+  const seen = useRef<Set<string> | null>(null)
+  useEffect(() => {
+    const ids = new Set(openIds ? openIds.split(',') : [])
+    const before = seen.current
+    seen.current = ids
+    if (!before || !useVrUi.getState().sound) return
+    if ([...ids].some((id) => !before.has(id))) sfxTask()
+  }, [openIds])
+  return null
+}
+
 function World() {
   const game = useGame((s) => s.game)
-  // The VR scene has no pause menu of its own: any open 2D menu section shows the mode picker.
   const menuOpen = useGame((s) => s.menu !== null)
   const selectedCrew = useVrUi((s) => s.selectedCrew)
   const assigning = useVrUi((s) => s.assigning)
@@ -122,43 +151,57 @@ function World() {
   return (
     <>
       <Clock />
+      <TaskChime />
       {!passthrough && <color attach="background" args={[C.space]} />}
-      {!passthrough && <Stars radius={60} depth={30} count={2500} factor={3} fade speed={0.3} />}
-      <hemisphereLight args={['#bcd4ff', '#1a1f2b', 0.9]} />
-      <directionalLight position={[1.5, 3, 1]} intensity={1.4} />
-      {!inSession && (
-        <OrbitControls
-          target={[LAYOUT.diorama[0], LAYOUT.diorama[1] + 0.2, LAYOUT.diorama[2]]}
-          maxDistance={4}
-          minDistance={0.4}
-        />
-      )}
+      {!passthrough && <Stars radius={90} depth={40} count={3500} factor={4} fade speed={0.3} />}
+      {!passthrough && <Backdrop />}
+      <hemisphereLight args={['#cfe0ff', '#1a1f2b', 0.95]} />
+      <directionalLight position={[1.5, 3, 1]} intensity={1.3} />
+      {!inSession && <OrbitControls makeDefault maxDistance={6} minDistance={0.3} />}
 
-      <group position={LAYOUT.diorama}>
+      <ShipRig>
         <Ship game={game} />
         <Crew game={game} />
-      </group>
+      </ShipRig>
 
-      <HudPanel game={game} position={LAYOUT.hud} />
+      <HudPanel game={game} position={LAYOUT.hud.position} rotY={LAYOUT.hud.rotY} />
+      <MissionBanner position={LAYOUT.banner.position} rotY={LAYOUT.banner.rotY} />
       <TaskPanel game={game} position={LAYOUT.tasks.position} rotY={LAYOUT.tasks.rotY} />
-      {assigning ? (
-        <AssignPanel
-          key={`${assigning.taskId}:${assigning.optionId}`}
-          game={game}
-          taskId={assigning.taskId}
-          optionId={assigning.optionId}
-          position={LAYOUT.side.position}
-          rotY={LAYOUT.side.rotY}
-        />
-      ) : selectedCrew ? (
-        <CrewPanel
-          game={game}
-          crewId={selectedCrew}
-          position={LAYOUT.side.position}
-          rotY={LAYOUT.side.rotY}
-        />
-      ) : null}
-      {menuOpen && <SetupPanel position={LAYOUT.setup} />}
+      {/* Panels with textures load on their own, so they never suspend the whole world. */}
+      <Suspense fallback={null}>
+        <CrewRoster game={game} position={LAYOUT.roster.position} rotY={LAYOUT.roster.rotY} />
+      </Suspense>
+      {selectedCrew && (
+        <Suspense fallback={null}>
+          <CrewPanel
+            game={game}
+            crewId={selectedCrew}
+            position={LAYOUT.crewCard.position}
+            rotY={LAYOUT.crewCard.rotY}
+          />
+        </Suspense>
+      )}
+      <LogConsole log={game.log} position={LAYOUT.console.position} tilt={LAYOUT.console.tilt} />
+
+      {/* Modal windows: right in front, drawn above every other panel. */}
+      {menuOpen ? (
+        <UiLayer base={200}>
+          <PausePanel position={LAYOUT.modal.position} rotY={LAYOUT.modal.rotY} />
+        </UiLayer>
+      ) : (
+        assigning && (
+          <UiLayer base={100}>
+            <AssignPanel
+              key={`${assigning.taskId}:${assigning.optionId}`}
+              game={game}
+              taskId={assigning.taskId}
+              optionId={assigning.optionId}
+              position={LAYOUT.modal.position}
+              rotY={LAYOUT.modal.rotY}
+            />
+          </UiLayer>
+        )
+      )}
     </>
   )
 }
@@ -176,8 +219,26 @@ const overlay: CSSProperties = {
   pointerEvents: 'none',
 }
 
+function useFullscreen() {
+  const [on, setOn] = useState(
+    () => typeof document !== 'undefined' && !!document.fullscreenElement,
+  )
+  useEffect(() => {
+    const sync = () => setOn(!!document.fullscreenElement)
+    document.addEventListener('fullscreenchange', sync)
+    return () => document.removeEventListener('fullscreenchange', sync)
+  }, [])
+  const toggle = () => {
+    if (document.fullscreenElement) void document.exitFullscreen()
+    else void document.documentElement.requestFullscreen?.().catch(() => {})
+  }
+  const supported = typeof document !== 'undefined' && !!document.fullscreenEnabled
+  return { on, toggle, supported }
+}
+
 export function VRView() {
   const [error, setError] = useState<string | null>(null)
+  const fullscreen = useFullscreen()
   const enter = (kind: 'vr' | 'ar') => {
     setError(null)
     diag(`botón entrar ${kind}`)
@@ -236,6 +297,16 @@ export function VRView() {
         >
           Realidad mixta (passthrough)
         </button>
+        {fullscreen.supported && (
+          <button
+            type="button"
+            className="btn"
+            style={{ pointerEvents: 'auto' }}
+            onClick={fullscreen.toggle}
+          >
+            {fullscreen.on ? 'Salir de pantalla completa' : 'Pantalla completa'}
+          </button>
+        )}
         <Link to="/" className="btn" style={{ pointerEvents: 'auto' }}>
           Volver a la consola 2D
         </Link>

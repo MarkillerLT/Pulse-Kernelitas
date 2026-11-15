@@ -1,6 +1,6 @@
 import { useLayoutEffect, useRef } from 'react'
 import { Billboard } from '@react-three/drei'
-import { useFrame, type ThreeEvent } from '@react-three/fiber'
+import { useFrame } from '@react-three/fiber'
 import type { Group } from 'three'
 import { CREW_IDS, firstName, type CrewId } from '../domain/content/crew'
 import type { GameState } from '../domain/model/game'
@@ -31,7 +31,6 @@ function Astronaut({ id, game, target }: { id: CrewId; game: GameState; target: 
     targetRef.current = target
   })
   const selected = useVrUi((s) => s.selectedCrew === id)
-  const selectCrew = useVrUi((s) => s.selectCrew)
   const crew = game.crew[id]
   const lying = crew.activity === 'rest' || crew.activity === 'medical'
   const warned = crew.activity !== 'dead' && getWorkWarnings(crew).length > 0
@@ -64,13 +63,7 @@ function Astronaut({ id, game, target }: { id: CrewId; game: GameState; target: 
 
   const color = CREW_COLORS[id]
   return (
-    <group
-      ref={root}
-      onClick={(e: ThreeEvent<MouseEvent>) => {
-        e.stopPropagation()
-        selectCrew(id)
-      }}
-    >
+    <group ref={root}>
       <group ref={body}>
         <mesh position={[0, BODY_R + BODY_L / 2, 0]}>
           <capsuleGeometry args={[BODY_R, BODY_L, 4, 10]} />
@@ -90,11 +83,6 @@ function Astronaut({ id, game, target }: { id: CrewId; game: GameState; target: 
           <meshStandardMaterial color="#9aa6b8" />
         </mesh>
       </group>
-      {/* Generous invisible hit area: tiny figures are hard to point at with a controller. */}
-      <mesh position={[0, 0.03, 0]} visible={false}>
-        <cylinderGeometry args={[0.025, 0.025, 0.07, 8]} />
-        <meshBasicMaterial />
-      </mesh>
       {selected && (
         <mesh position={[0, 0.003, 0]} rotation={[-Math.PI / 2, 0, 0]}>
           <ringGeometry args={[0.018, 0.024, 32]} />
@@ -104,6 +92,7 @@ function Astronaut({ id, game, target }: { id: CrewId; game: GameState; target: 
       {(status || selected) && (
         <Billboard position={[0, 0.085, 0]}>
           <Label
+            world
             size={selected ? 0.02 : 0.024}
             anchorX="center"
             anchorY="middle"
